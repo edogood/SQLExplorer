@@ -1,0 +1,118 @@
+{
+  "level": "intermedio",
+  "tags": [
+    "security",
+    "dcl"
+  ],
+  "description": "Least privilege e anti-pattern injection.",
+  "analogy": "Come una ricetta con varianti regionali.",
+  "mechanism": "Il motore SQL valuta clausole in ordine logico; la card mostra lo step-by-step.",
+  "edgeCases": [
+    "NULL handling",
+    "Ordering determinism"
+  ],
+  "dataset": {
+    "base": "core_shop_v1",
+    "patchSql": []
+  },
+  "example": {
+    "sql": "SELECT customer_id, SUM(total) AS spent FROM orders GROUP BY customer_id ORDER BY spent DESC LIMIT 5;",
+    "lineByLine": [
+      {
+        "line": 1,
+        "text": "SELECT customer_id, SUM(total) AS spent",
+        "why": "Proietta cliente e aggregato"
+      },
+      {
+        "line": 2,
+        "text": "FROM orders",
+        "why": "Sorgente dati"
+      },
+      {
+        "line": 3,
+        "text": "GROUP BY customer_id",
+        "why": "Raggruppa per cliente"
+      },
+      {
+        "line": 4,
+        "text": "ORDER BY spent DESC LIMIT 5",
+        "why": "Top spender"
+      }
+    ]
+  },
+  "exercises": [
+    {
+      "id": "ex1",
+      "prompt": "Trova i 3 prodotti più venduti",
+      "hints": [
+        "COUNT(*)",
+        "GROUP BY product_id"
+      ],
+      "solutionSql": "SELECT product_id, COUNT(*) AS c FROM order_items GROUP BY product_id ORDER BY c DESC LIMIT 3;",
+      "variants": [
+        "Aggiungi filtro ultimo mese"
+      ]
+    },
+    {
+      "id": "ex2",
+      "prompt": "Spesa media per cliente",
+      "hints": [
+        "AVG(total)"
+      ],
+      "solutionSql": "SELECT customer_id, AVG(total) FROM orders GROUP BY customer_id;",
+      "variants": [
+        "Mostra solo clienti con >=3 ordini"
+      ]
+    }
+  ],
+  "autograde": {
+    "compareMode": "multiset",
+    "expectedQuery": "SELECT 1;",
+    "tolerance": {
+      "floatAbs": 1e-06,
+      "floatRel": 1e-06
+    },
+    "forbiddenPatterns": [
+      ";--",
+      "pg_sleep",
+      "benchmark(",
+      "information_schema"
+    ],
+    "planChecks": [
+      {
+        "name": "no_seq_scan",
+        "dialect": "postgres",
+        "jsonPath": "$.Plan.Node Type",
+        "assert": "!= Seq Scan"
+      }
+    ]
+  },
+  "dialects": {
+    "postgres": {
+      "sql": "SELECT 1;",
+      "notes": [
+        "Equivalent basic syntax"
+      ]
+    },
+    "mysql": {
+      "sql": "SELECT 1;",
+      "notes": [
+        "Equivalent basic syntax"
+      ]
+    },
+    "sqlserver": {
+      "sql": "SELECT 1;",
+      "notes": [
+        "Equivalent basic syntax"
+      ]
+    },
+    "oracle": {
+      "sql": "SELECT 1;",
+      "notes": [
+        "Equivalent basic syntax"
+      ]
+    }
+  },
+  "id": "security.best_practices",
+  "title": "Security SQL"
+}
