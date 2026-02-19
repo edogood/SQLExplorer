@@ -18,6 +18,17 @@ pnpm --filter @sql-explorer/web dev
 pnpm --filter @sql-explorer/worker dev
 ```
 
+## Deploy frontend su GitHub Pages
+Il repository include il workflow `.github/workflows/deploy-pages.yml` che esegue export statico Next.js (`apps/web/out`) e pubblica su Pages.
+
+1. Abilita **GitHub Pages** su Actions nel repository.
+2. (Opzionale) configura la variabile repository `SQL_EXPLORER_API_BASE_URL` con URL pubblico dell'API.
+3. Effettua push su `main` oppure avvia manualmente il workflow.
+
+Note:
+- la web app viene pubblicata con `basePath=/<repo-name>`.
+- senza API configurata, il sito resta navigabile (catalogo statico) ma il playground query mostra messaggio di configurazione.
+
 ## Endpoint principali
 - `POST /api/sandbox/sessions`
 - `POST /api/sandbox/execute`

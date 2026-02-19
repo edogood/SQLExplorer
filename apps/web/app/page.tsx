@@ -1,17 +1,17 @@
 import Link from "next/link";
+import { LESSON_CATALOG } from "../lib/catalog";
 
-async function getCatalog() {
-  const res = await fetch("http://localhost:4000/api/content/catalog", { cache: "no-store" });
-  return res.json();
-}
-
-export default async function Home() {
-  const lessons = await getCatalog().catch(() => []);
+export default function Home() {
   return (
     <main>
       <h1>SQL Explorer - Catalogo</h1>
+      <p>Versione GitHub Pages: contenuti statici + playground collegabile a un'API esterna.</p>
       <ul>
-        {lessons.map((l: any) => <li key={l.id}><Link href={`/lesson/${l.id}`}>{l.title}</Link> ({l.level})</li>)}
+        {LESSON_CATALOG.map((l) => (
+          <li key={l.id}>
+            <Link href={`/lesson/${l.id}`}>{l.title}</Link> ({l.level})
+          </li>
+        ))}
       </ul>
     </main>
   );
