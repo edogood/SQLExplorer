@@ -1,33 +1,37 @@
 # SQL Explorer
 
-Monorepo didattico per imparare SQL da base a esperto con sandbox sicura.
+Monorepo didattico per imparare SQL da base a esperto con sandbox sicura locale e deploy pubblico in modalità sicura.
 
-## Struttura
-- `apps/web`: Next.js UI con catalogo, card lezione, editor SQL.
-- `apps/api`: Fastify API con auth JWT, content read-only, sandbox sessions, execute e grading.
-- `apps/worker`: worker per job async/autograding estendibile.
-- `packages/shared`: tipi/schema condivisi.
-- `infra`: docker compose, dataset base, script.
+## Architettura
+- `apps/web`: Next.js (App Router) + TypeScript, catalogo lezioni, viewer, playground SQL.
+- `apps/api`: API (Fastify TS) con auth JWT, content read-only, sandbox sessions/execute, grading, dialect translation.
+- `apps/worker`: worker estendibile per job async/autograding.
+- `packages/shared`: tipi e schemi condivisi.
+- `infra`: docker compose, dataset, script smoke.
 
-## Avvio locale
+## Modalità supportate
+### Modalità A — Vercel (raccomandata)
+Web deploy su Vercel. API deployabile separatamente.
+
+Per la sicurezza, scegliere una modalità runtime API tramite `EXECUTION_MODE`:
+- `no-exec` (default consigliato in prod): esecuzione SQL disabilitata, restano catalogo/contenuti/translation/autograde basato su query attesa.
+- `remote`: inoltro a sandbox worker esterno con webhook firmato HMAC (`REMOTE_SANDBOX_EXECUTE_URL`, `REMOTE_SANDBOX_HMAC_SECRET`).
+- `local`: solo sviluppo locale con Docker sandbox.
+
+### Modalità B — GitHub Pages (static-only)
+Export statico Next.js con contenuti e UI.
+- Se `NEXT_PUBLIC_API_BASE_URL` non è impostata: fallback didattico (niente esecuzione reale).
+- Se API è configurata ma `supportsExecution=false`: il pulsante Run SQL mostra messaggio di modalità no-exec.
+
+## Avvio locale (full sandbox)
 ```bash
 docker compose -f infra/docker-compose.yml up -d
 pnpm install
+cp .env.example .env
 pnpm --filter @sql-explorer/api dev
 pnpm --filter @sql-explorer/web dev
 pnpm --filter @sql-explorer/worker dev
 ```
-
-## Deploy frontend su GitHub Pages
-Il repository include il workflow `.github/workflows/deploy-pages.yml` che esegue export statico Next.js (`apps/web/out`) e pubblica su Pages.
-
-1. Abilita **GitHub Pages** su Actions nel repository.
-2. (Opzionale) configura la variabile repository `SQL_EXPLORER_API_BASE_URL` con URL pubblico dell'API.
-3. Effettua push su `main` oppure avvia manualmente il workflow.
-
-Note:
-- la web app viene pubblicata con `basePath=/<repo-name>`.
-- senza API configurata, il sito resta navigabile (catalogo statico) ma il playground query mostra messaggio di configurazione.
 
 ## Endpoint principali
 - `POST /api/sandbox/sessions`
@@ -35,6 +39,7 @@ Note:
 - `POST /api/exercises/grade`
 - `GET /api/content/catalog`
 - `GET /api/content/lessons/:id`
+- `GET /api/system/capabilities`
 - `POST /api/auth/login`
 - `POST /api/auth/register`
 - `GET /api/users/me/progress`
@@ -51,11 +56,15 @@ curl -X POST http://localhost:4000/api/sandbox/execute -H 'content-type: applica
 ```
 
 ## Sicurezza implementata
-- Validazione SQL con blocco pattern proibiti (COPY, CREATE EXTENSION, ALTER SYSTEM, benchmark, sleep...).
-- Sessioni isolate con schema/user dedicato su Postgres/MySQL.
-- Statement timeout e limiti output (righe+bytes).
-- Rate limiting endpoint execute.
-- Logging query anonimizzato (SHA-256 fingerprint, non query raw).
+- Validazione SQL con blocco pattern proibiti (COPY, CREATE EXTENSION, ALTER SYSTEM, sleep/benchmark, ecc.).
+- Sessioni isolate Postgres/MySQL.
+- Statement timeout e limiti output (row cap + bytes cap).
+- Rate limiting endpoint execute/grade.
+- Logging query anonimizzato con fingerprint SHA-256 (no query raw).
 
-## Lessons seed
-10 lezioni in `apps/api/content/lessons` coprono aree: select/join/aggregate/cte/window/performance/transaction/json/security/dialects.
+## Dataset e contenuti
+- Dataset base: `infra/datasets/core_shop_v1.sql`
+- Lezioni JSON (10): `apps/api/content/lessons/*.json`
+
+## Deploy GitHub Pages
+Workflow incluso: `.github/workflows/deploy-pages.yml`.

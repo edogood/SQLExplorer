@@ -11,20 +11,30 @@ export default function LessonClient({ id }: { id: string }) {
   const [lesson, setLesson] = useState<Lesson | null>(null);
   const [query, setQuery] = useState("SELECT * FROM orders LIMIT 5;");
   const [output, setOutput] = useState<any>(null);
+  const [executionEnabled, setExecutionEnabled] = useState(false);
 
   useEffect(() => {
     if (!API_BASE) {
-      setLesson({ id, title: id, description: "Imposta NEXT_PUBLIC_API_BASE_URL per caricare i dettagli da API." });
+      setLesson({ id, title: id, description: "Modalità static-only: imposta NEXT_PUBLIC_API_BASE_URL per caricare API e sandbox." });
       return;
     }
     fetch(`${API_BASE}/api/content/lessons/${id}`).then((r) => r.json()).then(setLesson);
+    fetch(`${API_BASE}/api/system/capabilities`)
+      .then((r) => r.ok ? r.json() : { supportsExecution: false })
+      .then((data) => setExecutionEnabled(Boolean(data.supportsExecution)))
+      .catch(() => setExecutionEnabled(false));
   }, [id]);
 
   const run = async () => {
     if (!API_BASE) {
-      setOutput({ ok: false, error: { message: "API non configurata. Imposta NEXT_PUBLIC_API_BASE_URL." } });
+      setOutput({ ok: false, error: { message: "Execution disabled: API non configurata. Usa solutions/translation." } });
       return;
     }
+    if (!executionEnabled) {
+      setOutput({ ok: false, error: { message: "Execution disabled in this deployment. Avvia localmente API + docker sandbox per l'esecuzione reale." } });
+      return;
+    }
+
     const session = await fetch(`${API_BASE}/api/sandbox/sessions`, {
       method: "POST",
       headers: { "Content-Type": "application/json" },
@@ -45,6 +55,7 @@ export default function LessonClient({ id }: { id: string }) {
     <div>
       <h1>{lesson.title}</h1>
       <p>{lesson.description}</p>
+      {!executionEnabled && <p><strong>Nota:</strong> Run SQL disabilitato in questa modalità di deploy.</p>}
       <CodeMirror value={query} height="200px" extensions={[sql()]} onChange={setQuery} />
       <button onClick={run}>Esegui</button>
       <pre>{JSON.stringify(output, null, 2)}</pre>
