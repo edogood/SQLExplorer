@@ -1,9 +1,11 @@
 import { createEngine } from '../core/engine.js';
 import { createElement, renderTable } from '../ui/dom.js';
 import { showToast } from '../ui/toast.js';
+import { createErd } from '../ui/erd.js';
 
 const dom = {};
 let engine = null;
+let erd = null;
 
 function cacheDom() {
   dom.status = document.getElementById('dbStatus');
@@ -29,19 +31,11 @@ function setStatus(message) {
   if (dom.status) dom.status.textContent = message;
 }
 
-function renderVisualizer(tables) {
-  if (!dom.dbVisualizer) return;
-  dom.dbVisualizer.innerHTML = '';
-  const wrap = createElement('div', { className: 'schema-svg' });
-  tables.forEach((t) => wrap.appendChild(createElement('div', { className: 'schema-node', text: t })));
-  dom.dbVisualizer.appendChild(wrap);
-}
-
 function populateTables(tables) {
   if (!dom.tableSelect) return;
   dom.tableSelect.innerHTML = '';
   tables.forEach((t) => {
-    dom.tableSelect.appendChild(createElement('option', { text: t, attrs: { value: t } }));
+    dom.tableSelect.appendChild(createElement('option', { text: t, attrs: { value: t.name || t } }));
   });
 }
 
@@ -51,15 +45,24 @@ function previewFirstTable(tables) {
     if (dom.tablePreview) dom.tablePreview.innerHTML = '<p class="muted">Nessuna tabella disponibile</p>';
     return;
   }
-  const data = engine.queryRows(`SELECT * FROM ${first} LIMIT 15`);
+  const data = engine.queryRows(`SELECT * FROM ${first.name || first} LIMIT 15`);
   renderTable(dom.tablePreview, data);
 }
 
-function refreshTables() {
-  const tables = engine.getTables();
-  populateTables(tables);
-  renderVisualizer(tables);
-  previewFirstTable(tables);
+async function refreshTables() {
+  const schema = engine.describe();
+  populateTables(schema.tables);
+  if (dom.dbVisualizer && !erd) {
+    erd = createErd(dom.dbVisualizer, {
+      onTableClick: (name) => {
+        if (dom.tableSelect) dom.tableSelect.value = name;
+        const data = engine.queryRows(`SELECT * FROM ${name} LIMIT 15`);
+        renderTable(dom.tablePreview, data);
+      }
+    });
+  }
+  if (erd) erd.update(schema);
+  previewFirstTable(schema.tables);
 }
 
 async function createTable() {

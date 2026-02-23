@@ -9,6 +9,15 @@ function seeded(seed) {
   };
 }
 
+function quoteIdent(name) {
+  return `'${String(name).replaceAll("'", "''")}'`;
+}
+
+function safeTableName(name) {
+  const sanitized = String(name || '').replace(/[^A-Za-z0-9_]/g, '');
+  return sanitized || 'temp';
+}
+
 function createDemoDb(SQL) {
   const db = new SQL.Database();
   db.exec(`
@@ -75,6 +84,54 @@ export async function createEngine() {
     return rows[0] ? rows[0].values.map((v) => v[0]) : [];
   }
 
+  function describeTable(name) {
+    const tbl = safeTableName(name);
+    const columnsResult = db.exec(`PRAGMA table_info(${quoteIdent(tbl)})`);
+    const columnsRows = columnsResult[0] ? columnsResult[0].values : [];
+    const fkResult = db.exec(`PRAGMA foreign_key_list(${quoteIdent(tbl)})`);
+    const fkRows = fkResult[0] ? fkResult[0].values : [];
+
+    const columns = columnsRows.map((row) => ({
+      cid: row[0],
+      name: row[1],
+      type: row[2],
+      notnull: row[3] === 1,
+      defaultValue: row[4],
+      pk: row[5] === 1,
+      fk: fkRows.find((fk) => fk[3] === row[1])
+        ? {
+            table: fkRows.find((fk) => fk[3] === row[1])[2],
+            column: fkRows.find((fk) => fk[3] === row[1])[4]
+          }
+        : null
+    }));
+
+    const foreignKeys = fkRows.map((fk) => ({
+      id: fk[0],
+      seq: fk[1],
+      table: fk[2],
+      from: fk[3],
+      to: fk[4]
+    }));
+
+    return { name: tbl, columns, foreignKeys };
+  }
+
+  function describe() {
+    const tables = getTables().map(describeTable);
+    const edges = tables
+      .flatMap((t) =>
+        t.foreignKeys.map((fk) => ({
+          from: t.name,
+          to: fk.table,
+          fromColumn: fk.from,
+          toColumn: fk.to
+        }))
+      )
+      .filter((edge) => tables.find((t) => t.name === edge.to));
+    return { tables, edges };
+  }
+
   function queryRows(sql) {
     const rows = db.exec(sql);
     if (!rows[0]) return { columns: [], rows: [] };
@@ -88,5 +145,13 @@ export async function createEngine() {
     return { result, changed };
   }
 
-  return { execute, queryRows, getTables, resetDemo, persist, clear: clear };
+  return {
+    execute,
+    queryRows,
+    getTables,
+    describe,
+    resetDemo,
+    persist,
+    clear: clear
+  };
 }
