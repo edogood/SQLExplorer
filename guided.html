@@ -8,9 +8,38 @@
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
   <link href="https://fonts.googleapis.com/css2?family=Sora:wght@400;600;700;800&family=IBM+Plex+Mono:wght@400;500&display=swap" rel="stylesheet">
   <link rel="stylesheet" href="styles.css">
+  <script type="module" src="./src/pages/guided.js"></script>
 </head>
 <body>
-<header class="site-header"><div class="header-inner"><a href="index.html" class="brand">SQL Lab Completo</a><nav class="top-nav"><a href="playground.html">Playground</a><a href="database.html">Database</a><a href="exercises.html">Exercises</a><a href="guided.html">Percorso</a><a href="trainer.html">Trainer</a><a href="keyword.html">Keyword</a><a href="syntax.html">Sintassi</a><a href="keywords.html">Keyword Explorer</a></nav></div></header>
-<main class="page"><section class="panel"><div class="panel-head"><h2>Percorso Guidato</h2><p>Per evitare una pagina troppo piena, il percorso è stato separato dalla home.</p></div><p class="hero-copy">Apri l'ambiente completo con database live e verifica step-by-step.</p><a class="btn btn-primary" href="playground.html#guided">Apri Percorso nel Lab</a></section></main>
+  <div class="bg-shape bg-shape-one" aria-hidden="true"></div>
+  <div class="bg-shape bg-shape-two" aria-hidden="true"></div>
+
+  <header class="site-header">
+    <div class="header-inner">
+      <a href="index.html" class="brand">SQL Lab Completo</a>
+      <nav class="top-nav">
+        <a href="playground.html">Playground</a>
+        <a href="database.html">Database</a>
+        <a href="exercises.html">Exercises</a>
+        <a href="guided.html">Percorso</a>
+        <a href="trainer.html">Trainer</a>
+        <a href="keyword.html">Keyword</a>
+        <a href="syntax.html">Sintassi</a>
+        <a href="keywords.html">Keyword Explorer</a>
+      </nav>
+    </div>
+  </header>
+
+  <main class="page">
+    <section class="panel">
+      <div class="panel-head">
+        <h2>Percorso Guidato</h2>
+        <p>Step con obiettivo, hint e starter per dialetto. L'esecuzione avviene nel Playground tramite deep-link.</p>
+        <span id="guidedCount" class="keyword-count"></span>
+      </div>
+
+      <div id="guidedList" class="keyword-list"></div>
+    </section>
+  </main>
 </body>
 </html>

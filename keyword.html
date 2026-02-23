@@ -1,3 +1,50 @@
-<!doctype html><html lang="en"><head><meta charset="UTF-8"><meta name="viewport" content="width=device-width,initial-scale=1"><title>SQL Explorer Keyword Explorer</title><link rel="stylesheet" href="styles.css"><script defer src="keyword-data.js"></script><script defer src="keyword-page.js"></script></head><body>
-<header class="site-header"><div class="header-inner"><a href="index.html" class="brand">SQL Explorer</a><nav class="top-nav"><a href="playground.html">Playground</a><a href="database.html">Database</a><a href="exercises.html">Exercises</a><a href="guided.html">Guided</a><a href="trainer.html">Trainer</a><a href="keyword.html">Keyword</a></nav></div></header>
-<main class="page"><section class="panel"><h1>Keyword Explorer</h1><div class="keyword-toolbar"><input id="kwSearch" placeholder="Search keyword"><select id="kwDialect"><option value="all">All</option><option value="sqlite">SQLite</option><option value="postgresql">PostgreSQL</option><option value="sqlserver">SQL Server</option></select><span id="kwCount"></span></div><div id="kwList" class="keyword-list"></div></section></main></body></html>
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width,initial-scale=1">
+  <title>Keyword Explorer | SQL Lab</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Sora:wght@400;600;700;800&family=IBM+Plex+Mono:wght@400;500&display=swap" rel="stylesheet">
+  <link rel="stylesheet" href="styles.css">
+  <script type="module" src="./src/pages/keywords.js"></script>
+</head>
+<body>
+  <div class="bg-shape bg-shape-one" aria-hidden="true"></div>
+  <div class="bg-shape bg-shape-two" aria-hidden="true"></div>
+
+  <header class="site-header">
+    <div class="header-inner">
+      <a href="index.html" class="brand">SQL Explorer</a>
+      <nav class="top-nav">
+        <a href="playground.html">Playground</a>
+        <a href="database.html">Database</a>
+        <a href="exercises.html">Exercises</a>
+        <a href="guided.html">Guided</a>
+        <a href="trainer.html">Trainer</a>
+        <a href="keyword.html">Keyword</a>
+        <a href="syntax.html">Sintassi</a>
+        <a href="keywords.html">Keyword Explorer</a>
+      </nav>
+    </div>
+  </header>
+
+  <main class="page">
+    <section class="panel">
+      <h1>Keyword Explorer</h1>
+      <div class="keyword-toolbar">
+        <input id="kwSearch" placeholder="Search keyword">
+        <select id="kwDialect">
+          <option value="all">All</option>
+          <option value="sqlite">SQLite</option>
+          <option value="postgresql">PostgreSQL</option>
+          <option value="sqlserver">SQL Server</option>
+        </select>
+        <span id="kwCount" class="keyword-count"></span>
+      </div>
+      <div id="kwList" class="keyword-list"></div>
+    </section>
+  </main>
+</body>
+</html>
