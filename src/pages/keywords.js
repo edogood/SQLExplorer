@@ -34,6 +34,7 @@ function render() {
   const dialect = dom.dialect?.value || 'all';
   const category = dom.category?.value || 'all';
   const filtered = KEYWORD_ENTRIES.filter((k) => {
+    if (!k.description || !k.examples || Object.values(k.examples).every((ex) => !ex || ex.trim().length < 8)) return false;
     const blob = [
       k.keyword,
       k.category,
