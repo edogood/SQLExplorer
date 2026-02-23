@@ -1,0 +1,49 @@
+<!doctype html>
+<html lang="it">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>SQL Lab - Pagina Sintassi</title>
+  <meta name="description" content="Pagina dedicata alla sintassi SQL con esempi per dialetto.">
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Sora:wght@400;600;700;800&family=IBM+Plex+Mono:wght@400;500&display=swap" rel="stylesheet">
+  <link rel="stylesheet" href="styles.css">
+  <script defer src="syntax-page.js"></script>
+</head>
+<body>
+  <div class="bg-shape bg-shape-one" aria-hidden="true"></div>
+  <div class="bg-shape bg-shape-two" aria-hidden="true"></div>
+
+  <header class="site-header">
+    <div class="header-inner">
+      <a href="index.html" class="brand">SQL Lab Completo</a>
+      <nav class="top-nav">
+        <a href="index.html#playground">Playground</a>
+        <a href="index.html#guided">Percorso</a>
+        <a href="index.html#keywords">Keyword</a>
+      </nav>
+    </div>
+  </header>
+
+  <main class="page">
+    <section class="panel">
+      <div class="panel-head">
+        <h2>Sintassi SQL Dedicata</h2>
+        <p>Reference separata con template query e varianti per SQLite, PostgreSQL e SQL Server.</p>
+      </div>
+
+      <div class="syntax-toolbar">
+        <input id="syntaxSearch" type="text" placeholder="Cerca struttura o funzione...">
+        <select id="syntaxDialect">
+          <option value="sqlite">SQLite</option>
+          <option value="postgresql">PostgreSQL</option>
+          <option value="sqlserver">SQL Server</option>
+        </select>
+      </div>
+
+      <div id="syntaxList" class="syntax-page-grid"></div>
+    </section>
+  </main>
+</body>
+</html>

@@ -1,0 +1,286 @@
+<!doctype html>
+<html lang="it">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>SQL Lab Completo</title>
+  <meta name="description" content="Playground SQL completo con query live, generazione tabelle e riferimento keyword.">
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Sora:wght@400;600;700;800&family=IBM+Plex+Mono:wght@400;500&display=swap" rel="stylesheet">
+  <link rel="stylesheet" href="styles.css">
+  <script defer src="https://cdnjs.cloudflare.com/ajax/libs/sql.js/1.10.2/sql-wasm.min.js"></script>
+  <script defer src="app.js"></script>
+</head>
+<body>
+  <div class="bg-shape bg-shape-one" aria-hidden="true"></div>
+  <div class="bg-shape bg-shape-two" aria-hidden="true"></div>
+
+  <header class="site-header">
+    <div class="header-inner">
+      <a href="#" class="brand">SQL Lab Completo</a>
+      <nav class="top-nav">
+        <a href="#playground">Playground</a>
+        <a href="#guided">Percorso</a>
+        <a href="#trainer">Trainer</a>
+        <a href="syntax.html">Sintassi</a>
+        <a href="#keywords">Keyword</a>
+      </nav>
+    </div>
+  </header>
+
+  <main class="page">
+    <section class="hero">
+      <p class="kicker">Allenamento SQL end-to-end</p>
+      <h1>Editor live, dataset generati, riferimento keyword esteso</h1>
+      <p class="hero-copy">
+        Questo sito ti permette di scrivere query, vedere subito cosa filtri, creare tabelle personalizzate e consultare una libreria ampia di keyword SQL con spiegazioni approfondite, casi d'uso e note di compatibilita tra dialetti.
+      </p>
+      <div class="hero-cards">
+        <article>
+          <h2>Runtime in-browser</h2>
+          <p>Database SQLite eseguito direttamente nel browser, senza server.</p>
+        </article>
+        <article>
+          <h2>Filtri in tempo reale</h2>
+          <p>Contatori prima/dopo e preview immediata dei risultati.</p>
+        </article>
+        <article>
+          <h2>Keyword explorer</h2>
+          <p>Ricerca, categorie e spiegazioni per keyword SQL standard e avanzate.</p>
+        </article>
+      </div>
+    </section>
+
+    <section id="playground" class="panel">
+      <div class="panel-head">
+        <h2>SQL Playground</h2>
+        <p>Scrivi query, modifica dati e studia i risultati riga per riga.</p>
+      </div>
+
+      <div class="playground-grid">
+        <div class="editor-panel">
+          <label for="queryInput">Query editor</label>
+          <textarea id="queryInput" spellcheck="false">WITH kpi AS (
+  SELECT c.segment,
+         o.currency,
+         ROUND(SUM(oi.quantity * oi.unit_price * (1 - oi.discount_pct)), 2) AS gross_revenue,
+         ROUND(SUM((oi.unit_price - p.cost_price) * oi.quantity), 2) AS gross_margin
+  FROM orders o
+  JOIN customers c ON c.id = o.customer_id
+  JOIN order_items oi ON oi.order_id = o.id
+  JOIN products p ON p.id = oi.product_id
+  WHERE o.status IN ('PAID', 'SHIPPED', 'REFUNDED')
+  GROUP BY c.segment, o.currency
+)
+SELECT segment,
+       currency,
+       CAST(gross_revenue AS INTEGER) AS revenue_int,
+       CONVERT('TEXT', gross_margin) AS margin_text,
+       gross_revenue,
+       gross_margin
+FROM kpi
+ORDER BY gross_revenue DESC
+LIMIT 25;</textarea>
+
+          <div class="controls-row">
+            <button id="runQueryBtn" class="btn btn-primary">Esegui query</button>
+            <button id="resetQueryBtn" class="btn btn-secondary">Reset query</button>
+            <button id="regenDataBtn" class="btn btn-secondary">Rigenera dataset demo</button>
+            <button id="exportSchemaBtn" class="btn btn-secondary">Copia schema SQL</button>
+            <label class="dialect-control" for="dialectSelect">
+              <span>Dialetto</span>
+              <select id="dialectSelect" class="dialect-select">
+                <option value="sqlite">SQLite (Engine)</option>
+                <option value="postgresql">PostgreSQL</option>
+                <option value="sqlserver">SQL Server</option>
+              </select>
+            </label>
+            <button id="loadDialectQueryBtn" class="btn btn-secondary">Carica query dialetto</button>
+            <label class="switch" for="autoRunToggle">
+              <input type="checkbox" id="autoRunToggle" checked>
+              <span>Auto-run</span>
+            </label>
+          </div>
+
+          <div class="status-row">
+            <span id="dbStatus" class="badge neutral">Inizializzazione...</span>
+            <span id="execTime" class="badge neutral">Tempo: -</span>
+            <span id="rowsCount" class="badge neutral">Righe: -</span>
+            <span id="filterInfo" class="badge neutral">Filtro: -</span>
+            <span id="dialectBadge" class="badge neutral">Dialetto: SQLite</span>
+          </div>
+
+          <div id="resultContainer" class="result-container">
+            <p class="placeholder">In attesa del database...</p>
+          </div>
+        </div>
+
+        <aside class="side-panel">
+          <article class="card">
+            <h3>Anteprima tabella</h3>
+            <p class="muted">Naviga velocemente i dati presenti nel database corrente.</p>
+            <label for="tableSelect">Tabella</label>
+            <select id="tableSelect"></select>
+            <div id="tableMeta" class="table-meta">Righe: -</div>
+            <div id="tablePreview" class="table-preview"></div>
+          </article>
+
+          <article class="card">
+            <h3>DB Visualizer</h3>
+            <p class="muted">Schema grafico tabelle + relazioni FK, aggiornato dinamicamente.</p>
+            <div id="dbVisualizerMeta" class="table-meta">Tabelle: - | Relazioni: -</div>
+            <div id="dbVisualizer" class="db-visualizer"></div>
+          </article>
+
+          <article class="card">
+            <h3>Generatore tabella personalizzata</h3>
+            <p class="muted">Crea una tabella nuova e popola righe test automaticamente.</p>
+            <label for="customTableName">Nome tabella</label>
+            <input id="customTableName" type="text" value="session_scores" placeholder="es: session_scores">
+
+            <label for="customColumns">Colonne SQL</label>
+            <textarea id="customColumns" rows="4" spellcheck="false">id INTEGER PRIMARY KEY,
+student TEXT,
+score INTEGER,
+created_at TEXT</textarea>
+
+            <label for="customRows">Numero righe demo</label>
+            <input id="customRows" type="number" min="0" max="500" value="20">
+
+            <button id="createTableBtn" class="btn btn-primary">Crea tabella e popola</button>
+          </article>
+
+          <article class="card">
+            <h3>Esercizi rapidi</h3>
+            <p class="muted">Carica una query pronta e studiane il comportamento.</p>
+            <div class="exercise-list">
+              <button class="exercise-btn" data-query="SELECT o.id,\n       o.currency,\n       CAST(o.total_amount AS INTEGER) AS total_int,\n       CONVERT('TEXT', o.total_amount) AS total_text,\n       ROUND(CONVERT('REAL', o.total_amount) - o.discount_amount, 2) AS netto\nFROM orders o\nWHERE o.status IN ('PAID', 'SHIPPED')\nORDER BY o.total_amount DESC\nLIMIT 25;">CAST + CONVERT</button>
+              <button class="exercise-btn" data-query="WITH monthly AS (\n  SELECT substr(order_date, 1, 7) AS mese,\n         ROUND(SUM(total_amount), 2) AS totale\n  FROM orders\n  WHERE status IN ('PAID','SHIPPED','REFUNDED')\n  GROUP BY substr(order_date, 1, 7)\n)\nSELECT mese,\n       totale,\n       ROUND(totale - LAG(totale) OVER (ORDER BY mese), 2) AS delta,\n       ROUND(AVG(totale) OVER (ORDER BY mese ROWS BETWEEN 2 PRECEDING AND CURRENT ROW), 2) AS media_mobile_3\nFROM monthly\nORDER BY mese;">CTE + LAG + window frame</button>
+              <button class="exercise-btn" data-query="SELECT s.name AS supplier,\n       w.name AS warehouse,\n       ROUND(SUM(CASE WHEN im.movement_type = 'IN' THEN im.quantity ELSE -im.quantity END), 0) AS qty_net,\n       ROUND(SUM(CASE WHEN im.movement_type = 'IN' THEN im.quantity * im.unit_cost ELSE -im.quantity * im.unit_cost END), 2) AS stock_value\nFROM inventory_movements im\nJOIN products p ON p.id = im.product_id\nJOIN suppliers s ON s.id = p.supplier_id\nJOIN warehouses w ON w.id = im.warehouse_id\nGROUP BY s.id, w.id\nHAVING ABS(qty_net) > 20\nORDER BY stock_value DESC\nLIMIT 30;">Supply chain valuation</button>
+              <button class="exercise-btn" data-query="WITH returned AS (\n  SELECT oi.order_id,\n         SUM(r.refund_amount) AS refund_total,\n         COUNT(r.id) AS return_rows\n  FROM returns r\n  JOIN order_items oi ON oi.id = r.order_item_id\n  WHERE r.status = 'REFUNDED'\n  GROUP BY oi.order_id\n)\nSELECT o.id,\n       o.status,\n       ROUND(o.total_amount, 2) AS order_total,\n       ROUND(COALESCE(rt.refund_total, 0), 2) AS refund_total,\n       ROUND(COALESCE(rt.refund_total, 0) / NULLIF(o.total_amount, 0), 4) AS refund_rate\nFROM orders o\nLEFT JOIN returned rt ON rt.order_id = o.id\nWHERE o.status IN ('PAID', 'SHIPPED', 'REFUNDED')\nORDER BY refund_rate DESC\nLIMIT 40;">Resi + NULLIF + COALESCE</button>
+              <button class="exercise-btn" data-query="SELECT c.segment,\n       st.priority,\n       COUNT(*) AS ticket_count,\n       ROUND(AVG(COALESCE((julianday(st.closed_at) - julianday(st.opened_at)) * 24, 0)), 2) AS avg_hours,\n       SUM(CASE WHEN st.closed_at IS NOT NULL AND (julianday(st.closed_at) - julianday(st.opened_at)) * 24 <= st.sla_hours THEN 1 ELSE 0 END) AS sla_ok\nFROM support_tickets st\nJOIN customers c ON c.id = st.customer_id\nGROUP BY c.segment, st.priority\nORDER BY ticket_count DESC;">Support SLA analytics</button>
+              <button class="exercise-btn" data-query="WITH ranked AS (\n  SELECT c.name AS customer,\n         c.segment,\n         ROUND(SUM(o.total_amount), 2) AS spend,\n         DENSE_RANK() OVER (PARTITION BY c.segment ORDER BY SUM(o.total_amount) DESC) AS rnk\n  FROM customers c\n  JOIN orders o ON o.customer_id = c.id\n  WHERE o.status IN ('PAID','SHIPPED','REFUNDED')\n  GROUP BY c.id\n)\nSELECT *\nFROM ranked\nWHERE rnk <= 5\nORDER BY segment, spend DESC;">Top customer per segmento</button>
+              <button class="exercise-btn" data-query="BEGIN;\nUPDATE products\nSET price = ROUND(price * 1.03, 2)\nWHERE category = 'Software';\nSELECT category,\n       ROUND(AVG(price), 2) AS avg_price_after_update\nFROM products\nGROUP BY category;\nROLLBACK;">Transazione: BEGIN / ROLLBACK</button>
+            </div>
+          </article>
+        </aside>
+      </div>
+    </section>
+
+    <section id="guided" class="panel">
+      <div class="panel-head">
+        <h2>Percorso Guidato SQL</h2>
+        <p>Step progressivi: obiettivo, hint, verifica automatica e soluzione per dialetto selezionato.</p>
+      </div>
+
+      <div class="guided-grid">
+        <article class="guided-main">
+          <div class="guided-topline">
+            <span id="guidedStepMeta" class="badge neutral">Step 1/1</span>
+            <span id="guidedDialectHint" class="badge neutral">Dialetto attivo: SQLite</span>
+          </div>
+          <h3 id="guidedStepTitle">Inizializzazione percorso...</h3>
+          <p id="guidedStepGoal" class="muted">Caricamento obiettivo.</p>
+
+          <h4 class="keyword-subtitle">Keyword target</h4>
+          <div id="guidedStepTopics" class="guided-topics"></div>
+
+          <h4 class="keyword-subtitle">Hint</h4>
+          <p id="guidedHint" class="guided-hint">Caricamento hint.</p>
+
+          <div class="guided-controls">
+            <button id="guidedPrevBtn" class="btn btn-secondary">Step precedente</button>
+            <button id="guidedLoadBtn" class="btn btn-secondary">Carica starter query</button>
+            <button id="guidedCheckBtn" class="btn btn-primary">Verifica step</button>
+            <button id="guidedSolutionBtn" class="btn btn-secondary">Mostra soluzione</button>
+            <button id="guidedNextBtn" class="btn btn-secondary">Step successivo</button>
+          </div>
+
+          <div id="guidedFeedback" class="guided-feedback neutral">Esegui la query e usa "Verifica step".</div>
+        </article>
+
+        <aside class="guided-side">
+          <h3>Timeline percorso</h3>
+          <div id="guidedTimeline" class="guided-timeline"></div>
+        </aside>
+      </div>
+    </section>
+
+    <section id="syntax" class="panel syntax-link-panel">
+      <div class="panel-head">
+        <h2>Mappa Sintassi SQL</h2>
+        <p>La sintassi e stata spostata in una pagina dedicata con esempi separati per dialetto.</p>
+      </div>
+      <a class="btn btn-primary syntax-open-btn" href="syntax.html">Apri Pagina Sintassi</a>
+    </section>
+
+    <section id="trainer" class="panel">
+      <div class="panel-head">
+        <h2>Keyword Trainer</h2>
+        <p>Esercizi guidati per ogni keyword: obiettivo, starter query, soluzione e verifica automatica.</p>
+      </div>
+
+      <div class="trainer-layout">
+        <aside class="trainer-sidebar">
+          <div class="trainer-toolbar">
+            <input id="trainerSearch" type="text" placeholder="Cerca keyword per test...">
+            <select id="trainerCategory"></select>
+          </div>
+          <div class="trainer-stats">
+            <span id="trainerProgress">Completate: 0/0</span>
+            <span id="trainerFiltered">Filtrate: 0</span>
+          </div>
+          <div id="trainerList" class="trainer-list"></div>
+        </aside>
+
+        <article class="trainer-main">
+          <div class="trainer-main-head">
+            <span id="trainerMeta" class="badge neutral">Keyword 0/0</span>
+            <span id="trainerMode" class="badge neutral">Verifica: -</span>
+          </div>
+
+          <h3 id="trainerTitle">Caricamento trainer...</h3>
+          <p id="trainerDescription" class="muted">Preparazione dettagli test.</p>
+          <pre id="trainerSyntax" class="syntax-line"></pre>
+
+          <h4 class="keyword-subtitle">Argomenti</h4>
+          <ul id="trainerArguments" class="keyword-points"></ul>
+
+          <h4 class="keyword-subtitle">Test guidato</h4>
+          <p id="trainerGoal" class="guided-hint">Caricamento obiettivo.</p>
+
+          <div class="trainer-controls">
+            <button id="trainerPrevBtn" class="btn btn-secondary">Precedente</button>
+            <button id="trainerLoadStarterBtn" class="btn btn-secondary">Carica starter</button>
+            <button id="trainerLoadSolutionBtn" class="btn btn-secondary">Mostra soluzione</button>
+            <button id="trainerCheckBtn" class="btn btn-primary">Verifica test</button>
+            <button id="trainerNextBtn" class="btn btn-secondary">Successiva</button>
+          </div>
+
+          <div id="trainerFeedback" class="guided-feedback neutral">Carica lo starter e completa il test nel query editor.</div>
+        </article>
+      </div>
+    </section>
+
+    <section id="keywords" class="panel">
+      <div class="panel-head">
+        <h2>SQL Keyword Explorer</h2>
+        <p>Catalogo esteso con spiegazioni approfondite, casi d'uso, pitfall e note di dialetto SQL.</p>
+      </div>
+
+      <div class="keyword-toolbar">
+        <input id="keywordSearch" type="text" placeholder="Cerca keyword o descrizione...">
+        <select id="keywordCategory"></select>
+        <span id="keywordCount" class="keyword-count">0 keyword</span>
+      </div>
+
+      <div id="keywordList" class="keyword-list"></div>
+    </section>
+  </main>
+
+  <footer class="site-footer">
+    <p>SQL Lab Completo - progettato per esercitazione pratica su query, filtri e sintassi.</p>
+  </footer>
+</body>
+</html>
