@@ -272,130 +272,102 @@ function cacheDom() {
   dom.todoNav = document.getElementById("todoNav");
   dom.todoSummary = document.getElementById("todoSummary");
   dom.todoNextBtn = document.getElementById("todoNextBtn");
-  dom.resetDbBtn = document.getElementById("resetDbBtn");
 }
 
 function wireEvents() {
-  if (dom.queryInput) {
-    dom.queryInput.value = getDialectDefaultQuery(state.dialect);
-  }
+  dom.queryInput.value = getDialectDefaultQuery(state.dialect);
   if (dom.dialectSelect) {
     dom.dialectSelect.value = state.dialect;
   }
 
-  if (dom.runQueryBtn) dom.runQueryBtn.addEventListener("click", () => runQuery(dom.queryInput.value));
-  if (dom.safeRunBtn) dom.safeRunBtn.addEventListener("click", () => runQueryWithSafety(dom.queryInput.value));
-  if (dom.explainPlanBtn) dom.explainPlanBtn.addEventListener("click", () => runExplainPlan(dom.queryInput.value));
-  if (dom.formatSqlBtn) dom.formatSqlBtn.addEventListener("click", () => { dom.queryInput.value = formatSql(dom.queryInput.value); });
-  if (dom.exportCsvBtn) dom.exportCsvBtn.addEventListener("click", exportLastResultCsv);
-  if (dom.pinQueryBtn) dom.pinQueryBtn.addEventListener("click", pinCurrentQuery);
-  if (dom.historySelect) {
-    dom.historySelect.addEventListener("change", () => {
-      if (dom.historySelect.value && dom.queryInput) dom.queryInput.value = dom.historySelect.value;
-    });
-  }
-  if (dom.saveSessionBtn) dom.saveSessionBtn.addEventListener("click", saveSessionToFile);
-  if (dom.loadSessionBtn) dom.loadSessionBtn.addEventListener("click", () => dom.sessionFileInput.click());
-  if (dom.sessionFileInput) dom.sessionFileInput.addEventListener("change", handleSessionUpload);
+  dom.runQueryBtn.addEventListener("click", () => runQuery(dom.queryInput.value));
+  dom.safeRunBtn.addEventListener("click", () => runQueryWithSafety(dom.queryInput.value));
+  dom.explainPlanBtn.addEventListener("click", () => runExplainPlan(dom.queryInput.value));
+  dom.formatSqlBtn.addEventListener("click", () => { dom.queryInput.value = formatSql(dom.queryInput.value); });
+  dom.exportCsvBtn.addEventListener("click", exportLastResultCsv);
+  dom.pinQueryBtn.addEventListener("click", pinCurrentQuery);
+  dom.historySelect.addEventListener("change", () => {
+    if (dom.historySelect.value) dom.queryInput.value = dom.historySelect.value;
+  });
+  dom.saveSessionBtn.addEventListener("click", saveSessionToFile);
+  dom.loadSessionBtn.addEventListener("click", () => dom.sessionFileInput.click());
+  dom.sessionFileInput.addEventListener("change", handleSessionUpload);
 
-  if (dom.resetQueryBtn) {
-    dom.resetQueryBtn.addEventListener("click", () => {
-      if (dom.queryInput) dom.queryInput.value = getDialectDefaultQuery(state.dialect);
-      runQuery(dom.queryInput ? dom.queryInput.value : "");
-    });
-  }
+  dom.resetQueryBtn.addEventListener("click", () => {
+    dom.queryInput.value = getDialectDefaultQuery(state.dialect);
+    runQuery(dom.queryInput.value);
+  });
 
-  if (dom.regenDataBtn) {
-    dom.regenDataBtn.addEventListener("click", () => {
-      initDemoDatabase();
-      persistDB();
-      if (dom.queryInput) {
-        if (state.autoRunFromUrl) {
-          runQuery(dom.queryInput.value, { source: "url-autorun" });
-          state.autoRunFromUrl = false;
-        } else {
-          runQuery(dom.queryInput.value);
-        }
-      }
-    });
-  }
+  dom.regenDataBtn.addEventListener("click", () => {
+    initDemoDatabase();
+    if (state.autoRunFromUrl) {
+      runQuery(dom.queryInput.value, { source: "url-autorun" });
+      state.autoRunFromUrl = false;
+    } else {
+      runQuery(dom.queryInput.value);
+    }
+  });
 
-  if (dom.exportSchemaBtn) dom.exportSchemaBtn.addEventListener("click", copySchemaToClipboard);
-  if (dom.loadDialectQueryBtn) {
-    dom.loadDialectQueryBtn.addEventListener("click", () => {
-      if (dom.queryInput) dom.queryInput.value = getDialectDefaultQuery(state.dialect);
-      runQuery(dom.queryInput ? dom.queryInput.value : "");
-    });
-  }
-  if (dom.dialectSelect) {
-    dom.dialectSelect.addEventListener("change", () => {
-      applyDialect(dom.dialectSelect.value, { preserveEditor: true });
-    });
-  }
+  dom.exportSchemaBtn.addEventListener("click", copySchemaToClipboard);
+  dom.loadDialectQueryBtn.addEventListener("click", () => {
+    dom.queryInput.value = getDialectDefaultQuery(state.dialect);
+    runQuery(dom.queryInput.value);
+  });
+  dom.dialectSelect.addEventListener("change", () => {
+    applyDialect(dom.dialectSelect.value, { preserveEditor: true });
+  });
 
-  if (dom.queryInput) {
-    dom.queryInput.addEventListener("keydown", (event) => {
-      if ((event.ctrlKey || event.metaKey) && event.key === "Enter") {
-        event.preventDefault();
-        runQuery(dom.queryInput.value, { source: "shortcut" });
-      }
-    });
+  dom.queryInput.addEventListener("keydown", (event) => {
+    if ((event.ctrlKey || event.metaKey) && event.key === "Enter") {
+      event.preventDefault();
+      runQuery(dom.queryInput.value, { source: "shortcut" });
+    }
+  });
 
-    dom.queryInput.addEventListener("input", () => {
-      if (!dom.autoRunToggle || !dom.autoRunToggle.checked || !state.db) return;
-      clearTimeout(state.autoTimer);
-      state.autoTimer = setTimeout(() => {
-        runQuery(dom.queryInput.value, { source: "auto" });
-      }, 350);
-    });
-  }
+  dom.queryInput.addEventListener("input", () => {
+    if (!dom.autoRunToggle.checked || !state.db) return;
+    clearTimeout(state.autoTimer);
+    state.autoTimer = setTimeout(() => {
+      runQuery(dom.queryInput.value, { source: "auto" });
+    }, 350);
+  });
 
-  if (dom.tableSelect) {
-    dom.tableSelect.addEventListener("change", () => {
-      state.previewTable = dom.tableSelect.value;
-      renderTablePreview(state.previewTable);
-    });
-  }
+  dom.tableSelect.addEventListener("change", () => {
+    state.previewTable = dom.tableSelect.value;
+    renderTablePreview(state.previewTable);
+  });
 
-  if (dom.createTableBtn) dom.createTableBtn.addEventListener("click", createCustomTable);
+  dom.createTableBtn.addEventListener("click", createCustomTable);
 
   if (dom.todoNextBtn) {
     dom.todoNextBtn.addEventListener("click", jumpToNextTodo);
   }
 
-  if (dom.resetDbBtn) {
-    dom.resetDbBtn.addEventListener("click", async () => {
-      await DBPersist.clear();
-      initDemoDatabase();
-      persistDB();
-    });
-  }
-
   Array.from(document.querySelectorAll(".exercise-btn")).forEach((btn) => {
     btn.addEventListener("click", () => {
-      if (dom.queryInput) dom.queryInput.value = btn.dataset.query;
-      runQuery(btn.dataset.query);
+      dom.queryInput.value = btn.dataset.query;
+      runQuery(dom.queryInput.value);
     });
   });
 
-  if (dom.keywordSearch) dom.keywordSearch.addEventListener("input", renderKeywordList);
-  if (dom.keywordCategory) dom.keywordCategory.addEventListener("change", renderKeywordList);
+  dom.keywordSearch.addEventListener("input", renderKeywordList);
+  dom.keywordCategory.addEventListener("change", renderKeywordList);
 
   if (dom.trainerSearch && dom.trainerCategory) {
     dom.trainerSearch.addEventListener("input", renderTrainerList);
     dom.trainerCategory.addEventListener("change", renderTrainerList);
-    if (dom.trainerPrevBtn) dom.trainerPrevBtn.addEventListener("click", () => moveTrainerKeyword(-1));
-    if (dom.trainerNextBtn) dom.trainerNextBtn.addEventListener("click", () => moveTrainerKeyword(1));
-    if (dom.trainerLoadStarterBtn) dom.trainerLoadStarterBtn.addEventListener("click", () => loadTrainerQuery("starter"));
-    if (dom.trainerLoadSolutionBtn) dom.trainerLoadSolutionBtn.addEventListener("click", () => loadTrainerQuery("solution"));
-    if (dom.trainerCheckBtn) dom.trainerCheckBtn.addEventListener("click", checkTrainerKeyword);
+    dom.trainerPrevBtn.addEventListener("click", () => moveTrainerKeyword(-1));
+    dom.trainerNextBtn.addEventListener("click", () => moveTrainerKeyword(1));
+    dom.trainerLoadStarterBtn.addEventListener("click", () => loadTrainerQuery("starter"));
+    dom.trainerLoadSolutionBtn.addEventListener("click", () => loadTrainerQuery("solution"));
+    dom.trainerCheckBtn.addEventListener("click", checkTrainerKeyword);
   }
 
-  if (dom.guidedPrevBtn) dom.guidedPrevBtn.addEventListener("click", () => moveGuidedStep(-1));
-  if (dom.guidedNextBtn) dom.guidedNextBtn.addEventListener("click", () => moveGuidedStep(1));
-  if (dom.guidedLoadBtn) dom.guidedLoadBtn.addEventListener("click", () => loadGuidedStepQuery("starter"));
-  if (dom.guidedSolutionBtn) dom.guidedSolutionBtn.addEventListener("click", () => loadGuidedStepQuery("solution"));
-  if (dom.guidedCheckBtn) dom.guidedCheckBtn.addEventListener("click", checkGuidedStep);
+  dom.guidedPrevBtn.addEventListener("click", () => moveGuidedStep(-1));
+  dom.guidedNextBtn.addEventListener("click", () => moveGuidedStep(1));
+  dom.guidedLoadBtn.addEventListener("click", () => loadGuidedStepQuery("starter"));
+  dom.guidedSolutionBtn.addEventListener("click", () => loadGuidedStepQuery("solution"));
+  dom.guidedCheckBtn.addEventListener("click", checkGuidedStep);
 }
 
 function getDialectDefaultQuery(dialect) {
@@ -438,7 +410,6 @@ function updateDialectBadge() {
 }
 
 function initGuidedPath() {
-  if (!dom.guidedStepMeta) return;
   if (!Number.isFinite(state.guidedIndex)) state.guidedIndex = 0;
   state.guidedIndex = Math.max(0, Math.min(GUIDED_STEPS.length - 1, state.guidedIndex));
   if (!(state.guidedCompleted instanceof Set)) state.guidedCompleted = new Set();
@@ -446,7 +417,7 @@ function initGuidedPath() {
 }
 
 function renderGuidedStep() {
-  if (!GUIDED_STEPS.length || !dom.guidedStepMeta) return;
+  if (!GUIDED_STEPS.length) return;
 
   const step = GUIDED_STEPS[state.guidedIndex];
   dom.guidedStepMeta.textContent = `Step ${state.guidedIndex + 1}/${GUIDED_STEPS.length}`;
@@ -476,8 +447,8 @@ function renderGuidedStep() {
     });
   });
 
-  if (dom.guidedPrevBtn) dom.guidedPrevBtn.disabled = state.guidedIndex <= 0;
-  if (dom.guidedNextBtn) dom.guidedNextBtn.disabled = state.guidedIndex >= GUIDED_STEPS.length - 1;
+  dom.guidedPrevBtn.disabled = state.guidedIndex <= 0;
+  dom.guidedNextBtn.disabled = state.guidedIndex >= GUIDED_STEPS.length - 1;
 }
 
 function moveGuidedStep(delta) {
@@ -497,7 +468,7 @@ function loadGuidedStepQuery(mode) {
   if (!query) {
     query = getGuidedVariant(step, "starter");
   }
-  if (dom.queryInput) dom.queryInput.value = query;
+  dom.queryInput.value = query;
   runQuery(query, { source: "guided" });
 }
 
@@ -509,7 +480,6 @@ function getGuidedRequiredTokens(step) {
 }
 
 function checkGuidedStep() {
-  if (!dom.queryInput) return;
   const step = GUIDED_STEPS[state.guidedIndex];
   const query = (dom.queryInput.value || "").trim();
   if (!query) {
@@ -558,7 +528,6 @@ function checkGuidedStep() {
 }
 
 function setGuidedFeedback(message, type) {
-  if (!dom.guidedFeedback) return;
   dom.guidedFeedback.textContent = message;
   dom.guidedFeedback.className = `guided-feedback ${type}`;
 }
@@ -567,53 +536,20 @@ async function initEngine() {
   try {
     setBadge(dom.dbStatus, "Caricamento SQL engine...", "neutral");
     state.SQL = await initSqlJs({
-      locateFile: (file) => file
+      locateFile: (file) => `https://cdnjs.cloudflare.com/ajax/libs/sql.js/1.10.2/${file}`
     });
 
-    let restored = false;
-    if (typeof DBPersist !== "undefined") {
-      const bytes = await DBPersist.load();
-      if (bytes) {
-        state.db = new state.SQL.Database(bytes);
-        createSqlFunctions();
-        restored = true;
-      }
-    }
-
-    if (!restored) {
-      initDemoDatabase();
-      persistDB();
-    }
-
-    setBadge(dom.dbStatus, "Database pronto", "success");
-    refreshTableSelector();
-
-    if (dom.queryInput) {
-      if (state.autoRunFromUrl) {
-        runQuery(dom.queryInput.value, { source: "url-autorun" });
-        state.autoRunFromUrl = false;
-      } else {
-        runQuery(dom.queryInput.value);
-      }
+    initDemoDatabase();
+    if (state.autoRunFromUrl) {
+      runQuery(dom.queryInput.value, { source: "url-autorun" });
+      state.autoRunFromUrl = false;
+    } else {
+      runQuery(dom.queryInput.value);
     }
   } catch (error) {
     setBadge(dom.dbStatus, "Errore engine SQL", "error");
-    if (dom.resultContainer) {
-      dom.resultContainer.innerHTML = `<pre class="error-block">${escapeHtml(error.message)}</pre>`;
-    }
+    dom.resultContainer.innerHTML = `<pre class="error-block">${escapeHtml(error.message)}</pre>`;
   }
-}
-
-function persistDB() {
-  if (state.db && typeof DBPersist !== "undefined") {
-    DBPersist.save(state.db.export());
-  }
-}
-
-async function resetDemoDB() {
-  if (typeof DBPersist !== "undefined") await DBPersist.clear();
-  initDemoDatabase();
-  persistDB();
 }
 
 function initDemoDatabase() {
@@ -665,7 +601,7 @@ function createSqlFunctions() {
 function convertValue(targetType, value, softFail) {
   try {
     if (value === null || value === undefined) return null;
-    const target = String(targetType || "TEXT").toUpperCase().trim().replace(/^['"]|['"]$/g, "");
+    const target = String(targetType || "TEXT").toUpperCase().trim();
 
     if (["TEXT", "STRING", "CHAR", "NCHAR", "VARCHAR", "NVARCHAR"].includes(target)) {
       return String(value);
@@ -1479,7 +1415,7 @@ function runQueryWithSafety(query) {
     const proceed = window.confirm("La query e una SELECT senza LIMIT. Vuoi aggiungere LIMIT 200 per evitare freeze UI?");
     if (proceed) {
       const patched = /;\s*$/.test(sql) ? sql.replace(/;\s*$/, " LIMIT 200;") : `${sql} LIMIT 200`;
-      if (dom.queryInput) dom.queryInput.value = patched;
+      dom.queryInput.value = patched;
       return runQuery(patched, { source: "safe-run" });
     }
   }
@@ -1496,15 +1432,15 @@ function runExplainPlan(query) {
 
   try {
     const plan = state.db.exec(`EXPLAIN QUERY PLAN ${transpileSqlForEngine(sql, state.dialect)}`);
-    if (dom.planContainer) dom.planContainer.hidden = false;
+    dom.planContainer.hidden = false;
     if (!plan.length) {
-      if (dom.planOutput) dom.planOutput.innerHTML = '<p class="info-block">Nessun piano disponibile.</p>';
+      dom.planOutput.innerHTML = '<p class="info-block">Nessun piano disponibile.</p>';
       return;
     }
-    if (dom.planOutput) dom.planOutput.innerHTML = renderTable(plan[0].columns, plan[0].values);
+    dom.planOutput.innerHTML = renderTable(plan[0].columns, plan[0].values);
   } catch (error) {
-    if (dom.planContainer) dom.planContainer.hidden = false;
-    if (dom.planOutput) dom.planOutput.innerHTML = `<pre class="error-block">${escapeHtml(error.message)}</pre>`;
+    dom.planContainer.hidden = false;
+    dom.planOutput.innerHTML = `<pre class="error-block">${escapeHtml(error.message)}</pre>`;
   }
 }
 
@@ -1583,8 +1519,7 @@ function handleSessionUpload(event) {
       state.db = new state.SQL.Database(data);
       createSqlFunctions();
       refreshTableSelector();
-      persistDB();
-      runQuery((dom.queryInput ? dom.queryInput.value : "") || "SELECT name FROM sqlite_master LIMIT 20;", { source: "session-load" });
+      runQuery(dom.queryInput.value || "SELECT name FROM sqlite_master LIMIT 20;", { source: "session-load" });
       setBadge(dom.dbStatus, "Sessione DB caricata", "success");
     } catch (error) {
       setBadge(dom.dbStatus, `Errore caricamento sessione: ${error.message}`, "error");
@@ -1717,9 +1652,9 @@ function runQuery(query, options = {}) {
   if (!state.db) return { ok: false, error: "Database non inizializzato" };
 
   const sql = (query || "").trim();
-  if (dom.queryInput) setTodoMatches(findTodoOccurrences(query || ""));
+  setTodoMatches(findTodoOccurrences(query || ""));
   if (!sql) {
-    if (dom.resultContainer) dom.resultContainer.innerHTML = '<p class="placeholder">Scrivi una query SQL per iniziare.</p>';
+    dom.resultContainer.innerHTML = '<p class="placeholder">Scrivi una query SQL per iniziare.</p>';
     return { ok: false, error: "Query vuota" };
   }
 
@@ -1742,22 +1677,20 @@ function runQuery(query, options = {}) {
 
     if (!startsWithSelect(executableSql)) {
       refreshTableSelector();
-      persistDB();
     }
 
     return { ok: true, results, rowsModified, elapsed };
   } catch (error) {
     setBadge(dom.dbStatus, "Errore query", "error");
-    if (dom.execTime) dom.execTime.textContent = "Tempo: -";
-    if (dom.rowsCount) dom.rowsCount.textContent = "Righe: -";
-    if (dom.filterInfo) dom.filterInfo.textContent = "Filtro: -";
-    if (dom.resultContainer) dom.resultContainer.innerHTML = `<pre class="error-block">${escapeHtml(error.message)}</pre>`;
+    dom.execTime.textContent = "Tempo: -";
+    dom.rowsCount.textContent = "Righe: -";
+    dom.filterInfo.textContent = "Filtro: -";
+    dom.resultContainer.innerHTML = `<pre class="error-block">${escapeHtml(error.message)}</pre>`;
     return { ok: false, error: error.message };
   }
 }
 
 function renderQueryResults(results, rowsModified) {
-  if (!dom.resultContainer) return;
   if (!results.length) {
     dom.resultContainer.innerHTML = `<p class="info-block">Comando eseguito. Righe modificate: <strong>${rowsModified}</strong>.</p>`;
     return;
@@ -1787,18 +1720,16 @@ function renderTable(columns, rows) {
 }
 
 function updateStats(sql, results, elapsed, rowsModified) {
-  if (dom.execTime) dom.execTime.textContent = `Tempo: ${elapsed.toFixed(1)} ms`;
+  dom.execTime.textContent = `Tempo: ${elapsed.toFixed(1)} ms`;
 
-  if (dom.rowsCount) {
-    if (results.length) {
-      const totalRows = results.reduce((acc, result) => acc + result.values.length, 0);
-      dom.rowsCount.textContent = `Righe: ${totalRows}`;
-    } else {
-      dom.rowsCount.textContent = `Righe modificate: ${rowsModified}`;
-    }
+  if (results.length) {
+    const totalRows = results.reduce((acc, result) => acc + result.values.length, 0);
+    dom.rowsCount.textContent = `Righe: ${totalRows}`;
+  } else {
+    dom.rowsCount.textContent = `Righe modificate: ${rowsModified}`;
   }
 
-  if (dom.filterInfo) dom.filterInfo.textContent = `Filtro: ${computeFilterInsight(sql, results)}`;
+  dom.filterInfo.textContent = `Filtro: ${computeFilterInsight(sql, results)}`;
 }
 
 function computeFilterInsight(sql, results) {
@@ -1827,7 +1758,6 @@ function computeFilterInsight(sql, results) {
 }
 
 function refreshTableSelector() {
-  if (!dom.tableSelect || !state.db) return;
   const tableRows = state.db.exec(
     "SELECT name FROM sqlite_master WHERE type='table' AND name NOT LIKE 'sqlite_%' ORDER BY name"
   );
@@ -1839,8 +1769,8 @@ function refreshTableSelector() {
     .join("");
 
   if (!tableNames.length) {
-    if (dom.tableMeta) dom.tableMeta.textContent = "Righe: 0";
-    if (dom.tablePreview) dom.tablePreview.innerHTML = "";
+    dom.tableMeta.textContent = "Righe: 0";
+    dom.tablePreview.innerHTML = "";
     renderSchemaVisualizer([]);
     return;
   }
@@ -1855,7 +1785,7 @@ function refreshTableSelector() {
 }
 
 function renderTablePreview(tableName) {
-  if (!tableName || !isSafeIdentifier(tableName) || !dom.tableMeta || !dom.tablePreview) return;
+  if (!tableName || !isSafeIdentifier(tableName)) return;
 
   const count = state.db.exec(`SELECT COUNT(*) FROM "${tableName}"`);
   const totalRows = Number(count?.[0]?.values?.[0]?.[0] ?? 0);
@@ -1875,7 +1805,7 @@ function renderSchemaVisualizer(tableNames) {
   if (!dom.dbVisualizer) return;
 
   if (!tableNames.length) {
-    if (dom.dbVisualizerMeta) dom.dbVisualizerMeta.textContent = "Tabelle: 0 | Relazioni: 0";
+    dom.dbVisualizerMeta.textContent = "Tabelle: 0 | Relazioni: 0";
     dom.dbVisualizer.innerHTML = '<p class="info-block">Nessuna tabella disponibile.</p>';
     return;
   }
@@ -1954,7 +1884,7 @@ function renderSchemaVisualizer(tableNames) {
     `;
   }).join("");
 
-  if (dom.dbVisualizerMeta) dom.dbVisualizerMeta.textContent = `Tabelle: ${tableNames.length} | Relazioni: ${links.length}`;
+  dom.dbVisualizerMeta.textContent = `Tabelle: ${tableNames.length} | Relazioni: ${links.length}`;
   dom.dbVisualizer.innerHTML = `
     <svg viewBox="0 0 ${width} ${height}" class="schema-svg" role="img" aria-label="Schema database">
       <defs>
@@ -1972,14 +1902,14 @@ function renderSchemaVisualizer(tableNames) {
       const table = node.getAttribute("data-table");
       if (!table) return;
       state.previewTable = table;
-      if (dom.tableSelect) dom.tableSelect.value = table;
+      dom.tableSelect.value = table;
       renderTablePreview(table);
     });
   });
 }
 
 function createCustomTable() {
-  if (!state.db || !dom.customTableName || !dom.customColumns || !dom.customRows) return;
+  if (!state.db) return;
 
   const tableName = (dom.customTableName.value || "").trim();
   const columnsRaw = (dom.customColumns.value || "").trim();
@@ -2021,14 +1951,11 @@ function createCustomTable() {
 
     setBadge(dom.dbStatus, `Tabella ${tableName} creata`, "success");
     refreshTableSelector();
-    persistDB();
-    if (dom.queryInput) {
-      dom.queryInput.value = `SELECT * FROM "${tableName}" LIMIT 50;`;
-      runQuery(dom.queryInput.value);
-    }
+    dom.queryInput.value = `SELECT * FROM "${tableName}" LIMIT 50;`;
+    runQuery(dom.queryInput.value);
   } catch (error) {
     setBadge(dom.dbStatus, "Errore creazione tabella", "error");
-    if (dom.resultContainer) dom.resultContainer.innerHTML = `<pre class="error-block">${escapeHtml(error.message)}</pre>`;
+    dom.resultContainer.innerHTML = `<pre class="error-block">${escapeHtml(error.message)}</pre>`;
   }
 }
 
@@ -2080,7 +2007,7 @@ function copySchemaToClipboard() {
       : "-- schema vuoto";
 
     if (!navigator.clipboard || typeof navigator.clipboard.writeText !== "function") {
-      if (dom.resultContainer) dom.resultContainer.innerHTML = `<pre class="info-block">${escapeHtml(schema)}</pre>`;
+      dom.resultContainer.innerHTML = `<pre class="info-block">${escapeHtml(schema)}</pre>`;
       setBadge(dom.dbStatus, "Clipboard non disponibile: schema mostrato sotto", "neutral");
       return;
     }
@@ -2089,12 +2016,12 @@ function copySchemaToClipboard() {
       .writeText(schema)
       .then(() => setBadge(dom.dbStatus, "Schema copiato negli appunti", "success"))
       .catch(() => {
-        if (dom.resultContainer) dom.resultContainer.innerHTML = `<pre class="info-block">${escapeHtml(schema)}</pre>`;
+        dom.resultContainer.innerHTML = `<pre class="info-block">${escapeHtml(schema)}</pre>`;
         setBadge(dom.dbStatus, "Clipboard non disponibile: schema mostrato sotto", "neutral");
       });
   } catch (error) {
     setBadge(dom.dbStatus, "Errore export schema", "error");
-    if (dom.resultContainer) dom.resultContainer.innerHTML = `<pre class="error-block">${escapeHtml(error.message)}</pre>`;
+    dom.resultContainer.innerHTML = `<pre class="error-block">${escapeHtml(error.message)}</pre>`;
   }
 }
 
@@ -2146,7 +2073,6 @@ function jumpToNextTodo() {
 }
 
 function setBadge(el, text, type) {
-  if (!el) return;
   el.textContent = text;
   el.className = `badge ${type}`;
 }
@@ -2216,8 +2142,6 @@ function seededRandom() {
 }
 
 function initKeywordExplorer() {
-  if (!dom.keywordCategory) return;
-
   const detailed = getDetailedKeywords();
   const allKeywords = getExtendedKeywords();
 
@@ -2278,7 +2202,6 @@ function normalizeKeywordEntry(item) {
 }
 
 function renderKeywordList() {
-  if (!dom.keywordSearch || !dom.keywordCategory || !dom.keywordList) return;
   const term = (dom.keywordSearch.value || "").trim().toLowerCase();
   const category = dom.keywordCategory.value || "Tutte";
 
@@ -2301,7 +2224,7 @@ function renderKeywordList() {
     return blob.includes(term);
   });
 
-  if (dom.keywordCount) dom.keywordCount.textContent = `${filtered.length} keyword`;
+  dom.keywordCount.textContent = `${filtered.length} keyword`;
 
   if (!filtered.length) {
     dom.keywordList.innerHTML = '<p class="info-block">Nessuna keyword trovata con i filtri correnti.</p>';
@@ -2391,20 +2314,20 @@ function renderTrainerList() {
 
   const total = state.keywordIndex.length;
   const completed = [...state.trainerCompleted].filter((keyword) => state.keywordIndex.some((item) => item.keyword === keyword)).length;
-  if (dom.trainerProgress) dom.trainerProgress.textContent = `Completate: ${completed}/${total}`;
-  if (dom.trainerFiltered) dom.trainerFiltered.textContent = `Filtrate: ${filtered.length}`;
+  dom.trainerProgress.textContent = `Completate: ${completed}/${total}`;
+  dom.trainerFiltered.textContent = `Filtrate: ${filtered.length}`;
 
   if (!filtered.length) {
     dom.trainerList.innerHTML = '<p class="info-block">Nessuna keyword trovata con i filtri correnti.</p>';
-    if (dom.trainerMeta) dom.trainerMeta.textContent = "Keyword 0/0";
-    if (dom.trainerMode) dom.trainerMode.textContent = "Verifica: -";
-    if (dom.trainerTitle) dom.trainerTitle.textContent = "Nessuna keyword selezionabile";
-    if (dom.trainerDescription) dom.trainerDescription.textContent = "Modifica i filtri per mostrare nuovi test.";
-    if (dom.trainerSyntax) dom.trainerSyntax.textContent = "--";
-    if (dom.trainerArguments) dom.trainerArguments.innerHTML = "";
-    if (dom.trainerGoal) dom.trainerGoal.textContent = "Nessun obiettivo disponibile.";
-    if (dom.trainerPrevBtn) dom.trainerPrevBtn.disabled = true;
-    if (dom.trainerNextBtn) dom.trainerNextBtn.disabled = true;
+    dom.trainerMeta.textContent = "Keyword 0/0";
+    dom.trainerMode.textContent = "Verifica: -";
+    dom.trainerTitle.textContent = "Nessuna keyword selezionabile";
+    dom.trainerDescription.textContent = "Modifica i filtri per mostrare nuovi test.";
+    dom.trainerSyntax.textContent = "--";
+    dom.trainerArguments.innerHTML = "";
+    dom.trainerGoal.textContent = "Nessun obiettivo disponibile.";
+    dom.trainerPrevBtn.disabled = true;
+    dom.trainerNextBtn.disabled = true;
     return;
   }
 
@@ -2447,23 +2370,23 @@ function renderTrainerDetail() {
   const count = state.trainerFilteredKeywords.length;
   const challenge = getTrainerChallenge(entry);
 
-  if (dom.trainerMeta) dom.trainerMeta.textContent = `Keyword ${position + 1}/${count}`;
-  if (dom.trainerMode) dom.trainerMode.textContent = challenge.executable
+  dom.trainerMeta.textContent = `Keyword ${position + 1}/${count}`;
+  dom.trainerMode.textContent = challenge.executable
     ? "Verifica: sintassi + esecuzione"
     : "Verifica: sintassi guidata";
 
-  if (dom.trainerTitle) dom.trainerTitle.textContent = entry.keyword;
-  if (dom.trainerDescription) dom.trainerDescription.textContent = entry.description;
-  if (dom.trainerSyntax) dom.trainerSyntax.textContent = entry.syntax || "--";
-  if (dom.trainerArguments) dom.trainerArguments.innerHTML = (entry.arguments || [])
+  dom.trainerTitle.textContent = entry.keyword;
+  dom.trainerDescription.textContent = entry.description;
+  dom.trainerSyntax.textContent = entry.syntax || "--";
+  dom.trainerArguments.innerHTML = (entry.arguments || [])
     .map((arg) => `<li>${escapeHtml(arg)}</li>`)
     .join("");
-  if (dom.trainerGoal) dom.trainerGoal.textContent = challenge.objective;
+  dom.trainerGoal.textContent = challenge.objective;
 
-  if (dom.trainerPrevBtn) dom.trainerPrevBtn.disabled = position <= 0;
-  if (dom.trainerNextBtn) dom.trainerNextBtn.disabled = position >= count - 1;
+  dom.trainerPrevBtn.disabled = position <= 0;
+  dom.trainerNextBtn.disabled = position >= count - 1;
 
-  if (dom.trainerFeedback && !dom.trainerFeedback.dataset.locked) {
+  if (!dom.trainerFeedback.dataset.locked) {
     setTrainerFeedback("Carica lo starter e completa il test nel query editor.", "neutral");
   }
 }
@@ -2486,7 +2409,7 @@ function loadTrainerQuery(mode) {
 
   const challenge = getTrainerChallenge(entry);
   const query = mode === "solution" ? challenge.solution : challenge.starter;
-  if (dom.queryInput) dom.queryInput.value = query;
+  dom.queryInput.value = query;
 
   if (mode === "solution" && challenge.executable) {
     runQuery(query, { source: "trainer-solution" });
@@ -2498,7 +2421,6 @@ function loadTrainerQuery(mode) {
 }
 
 function checkTrainerKeyword() {
-  if (!dom.queryInput) return;
   const entry = getCurrentTrainerEntry();
   if (!entry) return;
 
