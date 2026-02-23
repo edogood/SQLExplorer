@@ -266,8 +266,17 @@ select {
   font-weight: 700;
 }
 
-.dialect-select:focus {
-  outline: none;
+
+
+button:focus-visible,
+select:focus-visible,
+input:focus-visible,
+textarea:focus-visible,
+a:focus-visible,
+summary:focus-visible {
+  outline: 3px solid #0f766e;
+  outline-offset: 2px;
+  box-shadow: 0 0 0 2px rgba(255, 255, 255, 0.85);
 }
 
 .btn {
@@ -311,6 +320,36 @@ select {
 
 .switch input {
   width: auto;
+}
+
+.engine-pill {
+  display: inline-flex;
+  align-items: center;
+  border: 1px solid #9ec9c3;
+  border-radius: 999px;
+  padding: 0.3rem 0.62rem;
+  background: #e9f6f4;
+  color: #145753;
+  font-weight: 700;
+  font-size: 0.8rem;
+}
+
+.executed-sql-panel {
+  border: 1px solid #d7ddd0;
+  border-radius: 10px;
+  background: #fbfcfa;
+}
+
+.executed-sql-panel summary {
+  cursor: pointer;
+  padding: 0.56rem 0.68rem;
+  font-weight: 700;
+  color: var(--muted);
+}
+
+.executed-sql-panel pre {
+  margin: 0;
+  border-top: 1px solid #e5ebe1;
 }
 
 .status-row {
@@ -962,6 +1001,16 @@ select {
   to {
     opacity: 1;
     transform: translateY(0);
+  }
+}
+
+
+@media (prefers-reduced-motion: reduce) {
+  *, *::before, *::after {
+    animation-duration: 0.01ms !important;
+    animation-iteration-count: 1 !important;
+    transition-duration: 0.01ms !important;
+    scroll-behavior: auto !important;
   }
 }
 
