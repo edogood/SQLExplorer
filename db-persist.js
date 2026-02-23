@@ -1,97 +1,50 @@
-var DBPersist = (function () {
-  var DB_NAME = "sqlexplorer-db";
-  var STORE_NAME = "dbstore";
-  var KEY = "current";
+(function (global) {
+  'use strict';
 
-  function openDB() {
-    return new Promise(function (resolve, reject) {
-      var request = indexedDB.open(DB_NAME, 1);
-      request.onupgradeneeded = function (e) {
-        var db = e.target.result;
-        if (!db.objectStoreNames.contains(STORE_NAME)) {
-          db.createObjectStore(STORE_NAME);
-        }
+  const DB_NAME = 'sqlexplorer';
+  const STORE = 'sqlite';
+  const KEY = 'main';
+
+  function withStore(mode, fn) {
+    return new Promise((resolve, reject) => {
+      const req = indexedDB.open(DB_NAME, 1);
+      req.onupgradeneeded = () => {
+        const db = req.result;
+        if (!db.objectStoreNames.contains(STORE)) db.createObjectStore(STORE);
       };
-      request.onsuccess = function (e) {
-        resolve(e.target.result);
-      };
-      request.onerror = function (e) {
-        reject(e.target.error);
+      req.onerror = () => reject(req.error);
+      req.onsuccess = () => {
+        const db = req.result;
+        const tx = db.transaction(STORE, mode);
+        const store = tx.objectStore(STORE);
+        fn(store, resolve, reject);
+        tx.oncomplete = () => db.close();
+        tx.onerror = () => reject(tx.error);
       };
     });
   }
 
-  function save(uint8Array) {
-    return openDB()
-      .then(function (db) {
-        return new Promise(function (resolve, reject) {
-          var tx = db.transaction(STORE_NAME, "readwrite");
-          var store = tx.objectStore(STORE_NAME);
-          store.put(uint8Array, KEY);
-          tx.oncomplete = function () {
-            db.close();
-            resolve();
-          };
-          tx.onerror = function (e) {
-            db.close();
-            reject(e.target.error);
-          };
-        });
-      })
-      .catch(function (err) {
-        console.error("DBPersist.save failed:", err);
-      });
+  function save(bytes) {
+    return withStore('readwrite', (store, resolve) => {
+      store.put(bytes, KEY);
+      resolve();
+    });
   }
 
   function load() {
-    return openDB()
-      .then(function (db) {
-        return new Promise(function (resolve, reject) {
-          var tx = db.transaction(STORE_NAME, "readonly");
-          var store = tx.objectStore(STORE_NAME);
-          var request = store.get(KEY);
-          request.onsuccess = function () {
-            var data = request.result;
-            db.close();
-            resolve(data ? new Uint8Array(data) : null);
-          };
-          request.onerror = function (e) {
-            db.close();
-            reject(e.target.error);
-          };
-        });
-      })
-      .catch(function (err) {
-        console.error("DBPersist.load failed:", err);
-        return null;
-      });
+    return withStore('readonly', (store, resolve, reject) => {
+      const req = store.get(KEY);
+      req.onsuccess = () => resolve(req.result ? new Uint8Array(req.result) : null);
+      req.onerror = () => reject(req.error);
+    }).catch(() => null);
   }
 
   function clear() {
-    return openDB()
-      .then(function (db) {
-        return new Promise(function (resolve, reject) {
-          var tx = db.transaction(STORE_NAME, "readwrite");
-          var store = tx.objectStore(STORE_NAME);
-          store.delete(KEY);
-          tx.oncomplete = function () {
-            db.close();
-            resolve();
-          };
-          tx.onerror = function (e) {
-            db.close();
-            reject(e.target.error);
-          };
-        });
-      })
-      .catch(function (err) {
-        console.error("DBPersist.clear failed:", err);
-      });
+    return withStore('readwrite', (store, resolve) => {
+      store.delete(KEY);
+      resolve();
+    });
   }
 
-  return {
-    save: save,
-    load: load,
-    clear: clear
-  };
-})();
+  global.DBPersist = { save, load, clear };
+})(window);
