@@ -536,10 +536,24 @@ async function initEngine() {
   try {
     setBadge(dom.dbStatus, "Caricamento SQL engine...", "neutral");
     state.SQL = await initSqlJs({
-      locateFile: (file) => `https://cdnjs.cloudflare.com/ajax/libs/sql.js/1.10.2/${file}`
+      locateFile: (file) => file
     });
 
-    initDemoDatabase();
+    const persisted = window.DBPersist && typeof window.DBPersist.load === "function"
+      ? await window.DBPersist.load()
+      : null;
+
+    if (persisted) {
+      if (state.db) {
+        state.db.close();
+      }
+      state.db = new state.SQL.Database(persisted);
+      createSqlFunctions();
+      setBadge(dom.dbStatus, "Database pronto", "success");
+      refreshTableSelector();
+    } else {
+      initDemoDatabase();
+    }
     if (state.autoRunFromUrl) {
       runQuery(dom.queryInput.value, { source: "url-autorun" });
       state.autoRunFromUrl = false;
