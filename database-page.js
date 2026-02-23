@@ -46,7 +46,7 @@
     try {
       setBadge(dom.dbStatus, "Caricamento SQL engine...", "neutral");
       state.SQL = await initSqlJs({
-        locateFile: function (file) { return "https://cdnjs.cloudflare.com/ajax/libs/sql.js/1.10.2/" + file; }
+        locateFile: function (file) { return file; }
       });
 
       var restored = false;
@@ -109,7 +109,7 @@
   function convertValue(targetType, value, softFail) {
     try {
       if (value === null || value === undefined) return null;
-      var target = String(targetType || "TEXT").toUpperCase().trim();
+      var target = String(targetType || "TEXT").toUpperCase().trim().replace(/^['"]|['"]$/g, "");
       if (["TEXT","STRING","CHAR","NCHAR","VARCHAR","NVARCHAR"].indexOf(target) >= 0) return String(value);
       if (["INT","INTEGER","BIGINT","SMALLINT"].indexOf(target) >= 0) { var p = parseInt(String(value), 10); if (!Number.isFinite(p)) throw new Error("err"); return p; }
       if (["REAL","FLOAT","DOUBLE","NUMERIC","DECIMAL"].indexOf(target) >= 0) { var p2 = parseFloat(String(value)); if (!Number.isFinite(p2)) throw new Error("err"); return p2; }

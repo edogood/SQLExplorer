@@ -567,7 +567,7 @@ async function initEngine() {
   try {
     setBadge(dom.dbStatus, "Caricamento SQL engine...", "neutral");
     state.SQL = await initSqlJs({
-      locateFile: (file) => `https://cdnjs.cloudflare.com/ajax/libs/sql.js/1.10.2/${file}`
+      locateFile: (file) => file
     });
 
     let restored = false;
@@ -665,7 +665,7 @@ function createSqlFunctions() {
 function convertValue(targetType, value, softFail) {
   try {
     if (value === null || value === undefined) return null;
-    const target = String(targetType || "TEXT").toUpperCase().trim();
+    const target = String(targetType || "TEXT").toUpperCase().trim().replace(/^['"]|['"]$/g, "");
 
     if (["TEXT", "STRING", "CHAR", "NCHAR", "VARCHAR", "NVARCHAR"].includes(target)) {
       return String(value);
