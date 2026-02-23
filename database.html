@@ -1,0 +1,93 @@
+<!doctype html>
+<html lang="it">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Database | SQL Lab</title>
+  <meta name="description" content="Visualizza schema, tabelle e crea tabelle personalizzate.">
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Sora:wght@400;600;700;800&family=IBM+Plex+Mono:wght@400;500&display=swap" rel="stylesheet">
+  <link rel="stylesheet" href="styles.css">
+  <script defer src="sql-wasm.js"></script>
+  <script defer src="db-persist.js"></script>
+  <script defer src="database-page.js"></script>
+</head>
+<body>
+  <div class="bg-shape bg-shape-one" aria-hidden="true"></div>
+  <div class="bg-shape bg-shape-two" aria-hidden="true"></div>
+
+  <header class="site-header">
+    <div class="header-inner">
+      <a href="index.html" class="brand">SQL Lab Completo</a>
+      <nav class="top-nav">
+        <a href="playground.html">Playground</a>
+        <a href="database.html">Database</a>
+        <a href="exercises.html">Esercizi</a>
+        <a href="guided.html">Percorso</a>
+        <a href="trainer.html">Trainer</a>
+        <a href="syntax.html">Sintassi</a>
+        <a href="keywords.html">Keyword</a>
+      </nav>
+    </div>
+  </header>
+
+  <main class="page">
+    <section class="hero">
+      <p class="kicker">Database Explorer</p>
+      <h1>Schema, tabelle e generatore personalizzato</h1>
+      <p class="hero-copy">Visualizza il database demo, crea tabelle personalizzate e condividile col Playground.</p>
+    </section>
+
+    <section class="panel">
+      <div class="panel-head">
+        <h2>DB Visualizer</h2>
+        <p>Schema grafico tabelle + relazioni FK, aggiornato dinamicamente.</p>
+      </div>
+      <div class="status-row">
+        <span id="dbStatus" class="badge neutral" aria-live="polite">Inizializzazione...</span>
+        <button id="resetDbBtn" class="btn btn-secondary">Reset DB demo</button>
+      </div>
+      <div id="dbVisualizerMeta" class="table-meta">Tabelle: - | Relazioni: -</div>
+      <div id="dbVisualizer" class="db-visualizer"></div>
+    </section>
+
+    <section class="panel">
+      <div class="panel-head">
+        <h2>Anteprima tabella</h2>
+        <p>Naviga velocemente i dati presenti nel database corrente.</p>
+      </div>
+      <label for="tableSelect">Tabella</label>
+      <select id="tableSelect"></select>
+      <div id="tableMeta" class="table-meta">Righe: -</div>
+      <div id="tablePreview" class="table-preview"></div>
+    </section>
+
+    <section class="panel">
+      <div class="panel-head">
+        <h2>Generatore tabella personalizzata</h2>
+        <p>Crea una tabella nuova e popola righe test automaticamente. Persiste nel Playground.</p>
+      </div>
+
+      <label for="customTableName">Nome tabella</label>
+      <input id="customTableName" type="text" value="session_scores" placeholder="es: session_scores">
+
+      <label for="customColumns">Colonne SQL</label>
+      <textarea id="customColumns" rows="4" spellcheck="false">id INTEGER PRIMARY KEY,
+student TEXT,
+score INTEGER,
+created_at TEXT</textarea>
+
+      <label for="customRows">Numero righe demo</label>
+      <input id="customRows" type="number" min="0" max="500" value="20">
+
+      <button id="createTableBtn" class="btn btn-primary">Crea tabella e popola</button>
+      <div id="resultContainer" class="result-container" style="margin-top:1rem"></div>
+    </section>
+  </main>
+
+  <footer class="site-footer">
+    <p>SQL Lab Completo - Database Explorer</p>
+  </footer>
+</body>
+</html>

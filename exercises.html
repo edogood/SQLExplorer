@@ -1,0 +1,244 @@
+<!doctype html>
+<html lang="it">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Esercizi | SQL Lab</title>
+  <meta name="description" content="Lista strutturata di esercizi SQL con filtri per topic e difficoltà.">
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Sora:wght@400;600;700;800&family=IBM+Plex+Mono:wght@400;500&display=swap" rel="stylesheet">
+  <link rel="stylesheet" href="styles.css">
+</head>
+<body>
+  <div class="bg-shape bg-shape-one" aria-hidden="true"></div>
+  <div class="bg-shape bg-shape-two" aria-hidden="true"></div>
+
+  <header class="site-header">
+    <div class="header-inner">
+      <a href="index.html" class="brand">SQL Lab Completo</a>
+      <nav class="top-nav">
+        <a href="playground.html">Playground</a>
+        <a href="database.html">Database</a>
+        <a href="exercises.html">Esercizi</a>
+        <a href="guided.html">Percorso</a>
+        <a href="trainer.html">Trainer</a>
+        <a href="syntax.html">Sintassi</a>
+        <a href="keywords.html">Keyword</a>
+      </nav>
+    </div>
+  </header>
+
+  <main class="page">
+    <section class="hero">
+      <p class="kicker">Esercizi SQL</p>
+      <h1>Pratica guidata su query reali</h1>
+      <p class="hero-copy">Filtra per topic o difficoltà, poi apri l'esercizio direttamente nel Playground con auto-run.</p>
+    </section>
+
+    <section class="panel">
+      <div class="panel-head">
+        <h2>Lista esercizi</h2>
+        <p>Ogni esercizio include titolo, concetti e un link per provarlo nel Playground.</p>
+      </div>
+
+      <div class="keyword-toolbar">
+        <input id="exerciseSearch" type="text" placeholder="Cerca esercizio...">
+        <select id="exerciseTopic">
+          <option value="Tutti">Tutti i topic</option>
+        </select>
+        <select id="exerciseDifficulty">
+          <option value="Tutti">Tutte le difficoltà</option>
+          <option value="Base">Base</option>
+          <option value="Intermedio">Intermedio</option>
+          <option value="Avanzato">Avanzato</option>
+        </select>
+        <span id="exerciseCount" class="keyword-count">0 esercizi</span>
+      </div>
+
+      <div id="exerciseList" class="exercise-grid"></div>
+    </section>
+  </main>
+
+  <footer class="site-footer">
+    <p>SQL Lab Completo - Esercizi</p>
+  </footer>
+
+  <script>
+  (function () {
+    var EXERCISES = [
+      {
+        title: "CAST + CONVERT",
+        intent: "Converti tipi di dato in una query su ordini.",
+        tags: ["CAST", "CONVERT", "TRY_CONVERT"],
+        difficulty: "Intermedio",
+        query: "SELECT o.id,\n       o.currency,\n       CAST(o.total_amount AS INTEGER) AS total_int,\n       CONVERT('TEXT', o.total_amount) AS total_text,\n       ROUND(CONVERT('REAL', o.total_amount) - o.discount_amount, 2) AS netto\nFROM orders o\nWHERE o.status IN ('PAID', 'SHIPPED')\nORDER BY o.total_amount DESC\nLIMIT 25;"
+      },
+      {
+        title: "CTE + LAG + window frame",
+        intent: "Calcola trend mensile e media mobile con window functions.",
+        tags: ["WITH", "LAG", "OVER", "AVG", "Window"],
+        difficulty: "Avanzato",
+        query: "WITH monthly AS (\n  SELECT substr(order_date, 1, 7) AS mese,\n         ROUND(SUM(total_amount), 2) AS totale\n  FROM orders\n  WHERE status IN ('PAID','SHIPPED','REFUNDED')\n  GROUP BY substr(order_date, 1, 7)\n)\nSELECT mese,\n       totale,\n       ROUND(totale - LAG(totale) OVER (ORDER BY mese), 2) AS delta,\n       ROUND(AVG(totale) OVER (ORDER BY mese ROWS BETWEEN 2 PRECEDING AND CURRENT ROW), 2) AS media_mobile_3\nFROM monthly\nORDER BY mese;"
+      },
+      {
+        title: "Supply chain valuation",
+        intent: "Analizza il valore netto di stock per fornitore e magazzino.",
+        tags: ["JOIN", "GROUP BY", "HAVING", "CASE", "SUM"],
+        difficulty: "Avanzato",
+        query: "SELECT s.name AS supplier,\n       w.name AS warehouse,\n       ROUND(SUM(CASE WHEN im.movement_type = 'IN' THEN im.quantity ELSE -im.quantity END), 0) AS qty_net,\n       ROUND(SUM(CASE WHEN im.movement_type = 'IN' THEN im.quantity * im.unit_cost ELSE -im.quantity * im.unit_cost END), 2) AS stock_value\nFROM inventory_movements im\nJOIN products p ON p.id = im.product_id\nJOIN suppliers s ON s.id = p.supplier_id\nJOIN warehouses w ON w.id = im.warehouse_id\nGROUP BY s.id, w.id\nHAVING ABS(qty_net) > 20\nORDER BY stock_value DESC\nLIMIT 30;"
+      },
+      {
+        title: "Resi + NULLIF + COALESCE",
+        intent: "Calcola il tasso di rimborso per ordine gestendo valori nulli.",
+        tags: ["LEFT JOIN", "COALESCE", "NULLIF", "CTE"],
+        difficulty: "Intermedio",
+        query: "WITH returned AS (\n  SELECT oi.order_id,\n         SUM(r.refund_amount) AS refund_total,\n         COUNT(r.id) AS return_rows\n  FROM returns r\n  JOIN order_items oi ON oi.id = r.order_item_id\n  WHERE r.status = 'REFUNDED'\n  GROUP BY oi.order_id\n)\nSELECT o.id,\n       o.status,\n       ROUND(o.total_amount, 2) AS order_total,\n       ROUND(COALESCE(rt.refund_total, 0), 2) AS refund_total,\n       ROUND(COALESCE(rt.refund_total, 0) / NULLIF(o.total_amount, 0), 4) AS refund_rate\nFROM orders o\nLEFT JOIN returned rt ON rt.order_id = o.id\nWHERE o.status IN ('PAID', 'SHIPPED', 'REFUNDED')\nORDER BY refund_rate DESC\nLIMIT 40;"
+      },
+      {
+        title: "Support SLA analytics",
+        intent: "Analizza ticket di supporto per segmento e priorità con metriche SLA.",
+        tags: ["JOIN", "GROUP BY", "COALESCE", "CASE", "AVG"],
+        difficulty: "Intermedio",
+        query: "SELECT c.segment,\n       st.priority,\n       COUNT(*) AS ticket_count,\n       ROUND(AVG(COALESCE((julianday(st.closed_at) - julianday(st.opened_at)) * 24, 0)), 2) AS avg_hours,\n       SUM(CASE WHEN st.closed_at IS NOT NULL AND (julianday(st.closed_at) - julianday(st.opened_at)) * 24 <= st.sla_hours THEN 1 ELSE 0 END) AS sla_ok\nFROM support_tickets st\nJOIN customers c ON c.id = st.customer_id\nGROUP BY c.segment, st.priority\nORDER BY ticket_count DESC;"
+      },
+      {
+        title: "Top customer per segmento",
+        intent: "Classifica i migliori clienti per spesa in ogni segmento con DENSE_RANK.",
+        tags: ["DENSE_RANK", "OVER", "PARTITION BY", "CTE"],
+        difficulty: "Avanzato",
+        query: "WITH ranked AS (\n  SELECT c.name AS customer,\n         c.segment,\n         ROUND(SUM(o.total_amount), 2) AS spend,\n         DENSE_RANK() OVER (PARTITION BY c.segment ORDER BY SUM(o.total_amount) DESC) AS rnk\n  FROM customers c\n  JOIN orders o ON o.customer_id = c.id\n  WHERE o.status IN ('PAID','SHIPPED','REFUNDED')\n  GROUP BY c.id\n)\nSELECT *\nFROM ranked\nWHERE rnk <= 5\nORDER BY segment, spend DESC;"
+      },
+      {
+        title: "Transazione: BEGIN / ROLLBACK",
+        intent: "Simula un aumento prezzi e annulla con rollback.",
+        tags: ["BEGIN", "UPDATE", "ROLLBACK", "Transazioni"],
+        difficulty: "Base",
+        query: "BEGIN;\nUPDATE products\nSET price = ROUND(price * 1.03, 2)\nWHERE category = 'Software';\nSELECT category,\n       ROUND(AVG(price), 2) AS avg_price_after_update\nFROM products\nGROUP BY category;\nROLLBACK;"
+      },
+      {
+        title: "SELECT base con WHERE",
+        intent: "Filtra clienti Enterprise ordinati per credit limit.",
+        tags: ["SELECT", "WHERE", "ORDER BY", "LIMIT"],
+        difficulty: "Base",
+        query: "SELECT id, name, segment, credit_limit\nFROM customers\nWHERE segment = 'Enterprise'\nORDER BY credit_limit DESC\nLIMIT 20;"
+      },
+      {
+        title: "JOIN + aggregazione",
+        intent: "Calcola revenue per segmento con JOIN e GROUP BY.",
+        tags: ["JOIN", "GROUP BY", "SUM", "AVG"],
+        difficulty: "Base",
+        query: "SELECT c.segment,\n       ROUND(SUM(o.total_amount), 2) AS revenue,\n       ROUND(AVG(o.total_amount), 2) AS avg_order\nFROM customers c\nJOIN orders o ON o.customer_id = c.id\nWHERE o.status IN ('PAID','SHIPPED','REFUNDED')\nGROUP BY c.segment\nORDER BY revenue DESC;"
+      },
+      {
+        title: "Distinct + Count",
+        intent: "Conta clienti unici per paese.",
+        tags: ["DISTINCT", "COUNT", "GROUP BY"],
+        difficulty: "Base",
+        query: "SELECT country, COUNT(DISTINCT id) AS n_customers\nFROM customers\nGROUP BY country\nORDER BY n_customers DESC;"
+      },
+      {
+        title: "BETWEEN + date",
+        intent: "Filtra ordini in un intervallo di date.",
+        tags: ["BETWEEN", "WHERE", "ORDER BY"],
+        difficulty: "Base",
+        query: "SELECT id, order_date, total_amount, status\nFROM orders\nWHERE order_date BETWEEN '2025-01-01' AND '2025-12-31'\nORDER BY order_date\nLIMIT 30;"
+      },
+      {
+        title: "LIKE pattern matching",
+        intent: "Cerca clienti il cui nome inizia con una lettera specifica.",
+        tags: ["LIKE", "WHERE"],
+        difficulty: "Base",
+        query: "SELECT name, segment, country\nFROM customers\nWHERE name LIKE 'A%'\nORDER BY name\nLIMIT 20;"
+      },
+      {
+        title: "EXISTS subquery",
+        intent: "Trova clienti che hanno almeno un ordine pagato.",
+        tags: ["EXISTS", "Subquery", "WHERE"],
+        difficulty: "Intermedio",
+        query: "SELECT c.name, c.segment\nFROM customers c\nWHERE EXISTS (\n  SELECT 1 FROM orders o\n  WHERE o.customer_id = c.id AND o.status = 'PAID'\n)\nORDER BY c.name\nLIMIT 30;"
+      },
+      {
+        title: "UNION di conteggi",
+        intent: "Combina conteggi da tabelle diverse.",
+        tags: ["UNION", "COUNT"],
+        difficulty: "Intermedio",
+        query: "SELECT 'Ordini' AS fonte, COUNT(*) AS n FROM orders\nUNION ALL\nSELECT 'Resi', COUNT(*) FROM returns\nUNION ALL\nSELECT 'Ticket', COUNT(*) FROM support_tickets;"
+      },
+      {
+        title: "CASE WHEN classificazione",
+        intent: "Classifica ordini per fascia di importo.",
+        tags: ["CASE", "WHEN", "THEN", "ELSE"],
+        difficulty: "Intermedio",
+        query: "SELECT id, total_amount,\n       CASE\n         WHEN total_amount >= 5000 THEN 'premium'\n         WHEN total_amount >= 1000 THEN 'standard'\n         ELSE 'basic'\n       END AS fascia\nFROM orders\nWHERE status = 'PAID'\nORDER BY total_amount DESC\nLIMIT 30;"
+      },
+      {
+        title: "ROW_NUMBER per dedup",
+        intent: "Usa ROW_NUMBER per trovare l'ultimo ordine per cliente.",
+        tags: ["ROW_NUMBER", "OVER", "PARTITION BY", "CTE"],
+        difficulty: "Avanzato",
+        query: "WITH ranked AS (\n  SELECT customer_id, id AS order_id, order_date, total_amount,\n         ROW_NUMBER() OVER (PARTITION BY customer_id ORDER BY order_date DESC) AS rn\n  FROM orders\n  WHERE status IN ('PAID','SHIPPED')\n)\nSELECT customer_id, order_id, order_date, total_amount\nFROM ranked\nWHERE rn = 1\nORDER BY total_amount DESC\nLIMIT 20;"
+      }
+    ];
+
+    var searchInput = document.getElementById("exerciseSearch");
+    var topicSelect = document.getElementById("exerciseTopic");
+    var difficultySelect = document.getElementById("exerciseDifficulty");
+    var countSpan = document.getElementById("exerciseCount");
+    var listContainer = document.getElementById("exerciseList");
+    if (!listContainer) return;
+
+    /* Build topic options */
+    var topics = new Set();
+    EXERCISES.forEach(function (ex) { ex.tags.forEach(function (t) { topics.add(t); }); });
+    var sortedTopics = Array.from(topics).sort();
+    sortedTopics.forEach(function (t) {
+      var opt = document.createElement("option");
+      opt.value = t;
+      opt.textContent = t;
+      topicSelect.appendChild(opt);
+    });
+
+    function render() {
+      var term = (searchInput ? searchInput.value : "").trim().toLowerCase();
+      var topic = topicSelect ? topicSelect.value : "Tutti";
+      var diff = difficultySelect ? difficultySelect.value : "Tutti";
+
+      var filtered = EXERCISES.filter(function (ex) {
+        if (topic !== "Tutti" && ex.tags.indexOf(topic) < 0) return false;
+        if (diff !== "Tutti" && ex.difficulty !== diff) return false;
+        if (term) {
+          var blob = (ex.title + " " + ex.intent + " " + ex.tags.join(" ") + " " + ex.difficulty).toLowerCase();
+          if (blob.indexOf(term) < 0) return false;
+        }
+        return true;
+      });
+
+      if (countSpan) countSpan.textContent = filtered.length + " esercizi";
+
+      if (!filtered.length) {
+        listContainer.innerHTML = '<p class="info-block">Nessun esercizio trovato con i filtri correnti.</p>';
+        return;
+      }
+
+      listContainer.innerHTML = filtered.map(function (ex) {
+        var tags = ex.tags.map(function (t) { return '<span class="guided-chip">' + t + '</span>'; }).join(" ");
+        var encodedQuery = encodeURIComponent(ex.query);
+        var link = "playground.html?dialect=sqlite&q=" + encodedQuery + "&autorun=1";
+        return '<article class="keyword-card">' +
+          '<div class="keyword-head"><h3>' + ex.title + '</h3><span class="tag">' + ex.difficulty + '</span></div>' +
+          '<p>' + ex.intent + '</p>' +
+          '<div class="guided-topics" style="margin:0.5rem 0">' + tags + '</div>' +
+          '<a class="btn btn-primary" href="' + link + '">Prova nel Playground</a>' +
+          '</article>';
+      }).join("");
+    }
+
+    if (searchInput) searchInput.addEventListener("input", render);
+    if (topicSelect) topicSelect.addEventListener("change", render);
+    if (difficultySelect) difficultySelect.addEventListener("change", render);
+    render();
+  })();
+  </script>
+</body>
+</html>
