@@ -573,13 +573,6 @@ summary:focus-visible {
   transform: translateX(1px);
 }
 
-.exercise-grid {
-  display: grid;
-  gap: 1rem;
-  grid-template-columns: repeat(auto-fill, minmax(320px, 1fr));
-  margin-top: 1rem;
-}
-
 .guided-grid {
   margin-top: 1rem;
   display: grid;
