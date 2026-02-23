@@ -1,33 +1,35 @@
 # SQLExplorer / SQL Lab Completo
 
 ## Cosa è cambiato
-- Chiarezza **Engine vs Dialetto esempi**: badge e testi espliciti, con info che l'esecuzione resta sempre su SQLite (sql.js).
-- Nuovi strumenti Playground:
-  - pannello collassabile **SQL eseguito** (query dopo transpile/normalizzazione);
-  - **Safe Run** per suggerire LIMIT sulle SELECT non limitate;
-  - **EXPLAIN QUERY PLAN** con output dedicato;
-  - **Format SQL**, shortcut **Ctrl+Enter**, export risultati CSV.
-- Verifica Guided/Trainer migliorata:
-  - verifica output-based (colonne, row count, signature hash del resultset normalizzato);
-  - token mantenuti come vincolo didattico separato, con messaggio distinto.
-- Persistenza sessione:
-  - salvataggio DB corrente in file `.sqlite`;
-  - caricamento DB da file;
-  - persistenza locale di query corrente, cronologia query (ultime 30), query pinnate, progress Guided/Trainer.
-- Accessibilità:
-  - focus ring visibile su elementi interattivi;
-  - `aria-live="polite"` per feedback/status principali;
-  - supporto `prefers-reduced-motion`.
+- **Nuova Information Architecture (multi-page)**:
+  - `index.html` ora è una landing snella con CTA per Playground, Percorso, Trainer e blocco Reference.
+  - nuove pagine dedicate: `playground.html`, `guided.html`, `trainer.html`, `keywords.html`.
+- **Deep-link operativo Syntax -> Playground**:
+  - in `syntax.html` ogni topic ha azioni `Copia snippet` e `Apri nel Playground`.
+  - `Apri nel Playground` usa querystring (`dialect`, `q`, `autorun=1`) per prefill + esecuzione automatica.
+  - topic con permalink (`#slug`) per condivisione/anchor diretto.
+- **TODO UX migliorata (Guided/Trainer)**:
+  - placeholder standardizzati su `/* TODO: ... */`.
+  - blocco verifica con conteggio TODO trovati.
+  - pulsante `Prossimo TODO` per salto/selezione della prossima occorrenza nel query editor.
+- **Accessibilità mirata**:
+  - live region `aria-live="polite"` nella pagina sintassi per annunciare conteggio risultati o nessun match.
+  - `scroll-margin-top` per evitare che anchor/focus finiscano sotto header sticky.
+  - focus indicator rinforzato con `:focus-visible`.
 
 ## Come testare manualmente
-1. Apri `index.html` e verifica che sia visibile `Engine: SQLite (sql.js)`.
-2. Cambia dialetto esempi in SQL Server e carica query dialetto: nel pannello **SQL eseguito** deve comparire la versione SQLite (es. `TOP` -> `LIMIT`).
-3. Usa Guided/Trainer:
-   - query semanticamente equivalente deve passare la verifica output-based;
-   - query con output corretto ma senza token richiesti deve mostrare il messaggio dedicato sul concetto mancante.
-4. Premi **Salva sessione**, poi ricarica pagina e **Carica sessione**: DB ripristinato; progressi/query recuperati da localStorage.
-5. Naviga via tastiera (TAB/SHIFT+TAB): focus sempre visibile; feedback letti via regioni `aria-live`.
+1. Apri `index.html`: la home deve essere snella (senza tutte le sezioni del lab insieme).
+2. Apri `syntax.html`, cerca un topic e usa `Apri nel Playground`:
+   - deve aprire `playground.html` con query precompilata;
+   - dialetto impostato da querystring;
+   - query eseguita automaticamente (`autorun=1`).
+3. In `playground.html` carica uno starter Guided/Trainer con TODO:
+   - deve apparire il riepilogo `TODO trovati: N`;
+   - `Prossimo TODO` deve selezionare/scorrere alla successiva occorrenza.
+4. In `syntax.html` verifica accessibilità:
+   - la ricerca annuncia risultati/no match in live region;
+   - aprendo un permalink `#topic` il target non resta nascosto dal header.
 
 ## Limiti noti
-- La signature output-based usa normalizzazione deterministicamente ordinata su righe/colonne; query con semantica intenzionalmente diversa possono fallire per mismatch valori.
-- Per ora non è stata introdotta esecuzione in Web Worker (TODO tecnico per evitare blocchi UI su query molto pesanti).
+- Il core runtime resta su `sql.js` (SQLite in browser): il dialetto è didattico e non cambia l'engine.
+- `guided.html`, `trainer.html`, `keywords.html` sono entry-point dedicati che rimandano al lab operativo (`playground.html`) per esecuzione SQL e verifiche.

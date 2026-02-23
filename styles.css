@@ -1074,3 +1074,64 @@ summary:focus-visible {
     justify-self: start;
   }
 }
+
+.landing-cta-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(220px, 1fr));
+  gap: 1rem;
+}
+
+.landing-cta-card,
+.landing-ref-card {
+  display: block;
+  border: 1px solid var(--line, rgba(255,255,255,0.15));
+  border-radius: 16px;
+  padding: 1rem;
+  text-decoration: none;
+  background: rgba(10, 14, 28, 0.55);
+}
+
+.landing-reference-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(260px, 1fr));
+  gap: 1rem;
+}
+
+.syntax-actions {
+  display: flex;
+  gap: .6rem;
+  flex-wrap: wrap;
+}
+
+.syntax-page-card,
+.syntax-page-card h3,
+.syntax-page-card h3 a,
+.panel,
+section[id],
+[id^="guided"],
+[id^="trainer"] {
+  scroll-margin-top: 96px;
+}
+
+.sr-only {
+  position: absolute;
+  width: 1px;
+  height: 1px;
+  padding: 0;
+  margin: -1px;
+  overflow: hidden;
+  clip: rect(0, 0, 0, 0);
+  border: 0;
+}
+
+:focus-visible {
+  outline: 3px solid #68d7ff;
+  outline-offset: 2px;
+}
+
+.todo-nav {
+  margin-top: .75rem;
+  display: flex;
+  align-items: center;
+  gap: .5rem;
+}
