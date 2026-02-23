@@ -85,17 +85,27 @@ LIMIT 25;</textarea>
 
           <div class="controls-row">
             <button id="runQueryBtn" class="btn btn-primary">Esegui query</button>
+            <button id="safeRunBtn" class="btn btn-secondary">Safe Run</button>
+            <button id="explainPlanBtn" class="btn btn-secondary">Esegui con EXPLAIN QUERY PLAN</button>
+            <button id="formatSqlBtn" class="btn btn-secondary">Format SQL</button>
             <button id="resetQueryBtn" class="btn btn-secondary">Reset query</button>
             <button id="regenDataBtn" class="btn btn-secondary">Rigenera dataset demo</button>
             <button id="exportSchemaBtn" class="btn btn-secondary">Copia schema SQL</button>
+            <button id="exportCsvBtn" class="btn btn-secondary">Export CSV</button>
+            <select id="historySelect" class="dialect-select" aria-label="Cronologia query"></select>
+            <button id="pinQueryBtn" class="btn btn-secondary">Pin query</button>
+            <button id="saveSessionBtn" class="btn btn-secondary">Salva sessione</button>
+            <button id="loadSessionBtn" class="btn btn-secondary">Carica sessione</button>
+            <input id="sessionFileInput" type="file" accept=".sqlite,application/octet-stream" hidden>
             <label class="dialect-control" for="dialectSelect">
-              <span>Dialetto</span>
+              <span>Dialetto esempi</span>
               <select id="dialectSelect" class="dialect-select">
                 <option value="sqlite">SQLite (Engine)</option>
                 <option value="postgresql">PostgreSQL</option>
                 <option value="sqlserver">SQL Server</option>
               </select>
             </label>
+            <span class="engine-pill" title="Esecuzione sempre su SQLite; il dialetto serve a studiare la sintassi e le differenze.">Engine: SQLite (sql.js)</span>
             <button id="loadDialectQueryBtn" class="btn btn-secondary">Carica query dialetto</button>
             <label class="switch" for="autoRunToggle">
               <input type="checkbox" id="autoRunToggle" checked>
@@ -104,11 +114,21 @@ LIMIT 25;</textarea>
           </div>
 
           <div class="status-row">
-            <span id="dbStatus" class="badge neutral">Inizializzazione...</span>
+            <span id="dbStatus" class="badge neutral" aria-live="polite">Inizializzazione...</span>
             <span id="execTime" class="badge neutral">Tempo: -</span>
             <span id="rowsCount" class="badge neutral">Righe: -</span>
             <span id="filterInfo" class="badge neutral">Filtro: -</span>
-            <span id="dialectBadge" class="badge neutral">Dialetto: SQLite</span>
+            <span id="dialectBadge" class="badge neutral" title="Esecuzione sempre su SQLite; il dialetto serve a studiare la sintassi e le differenze.">Dialetto esempi: SQLite</span>
+          </div>
+
+          <details class="executed-sql-panel" id="executedSqlPanel">
+            <summary>SQL eseguito</summary>
+            <pre id="executedSqlText" class="syntax-line">-</pre>
+          </details>
+
+          <div id="planContainer" class="result-container" hidden>
+            <p class="result-title">Piano di esecuzione</p>
+            <div id="planOutput"></div>
           </div>
 
           <div id="resultContainer" class="result-container">
@@ -197,7 +217,7 @@ created_at TEXT</textarea>
             <button id="guidedNextBtn" class="btn btn-secondary">Step successivo</button>
           </div>
 
-          <div id="guidedFeedback" class="guided-feedback neutral">Esegui la query e usa "Verifica step".</div>
+          <div id="guidedFeedback" class="guided-feedback neutral" aria-live="polite">Esegui la query e usa "Verifica step".</div>
         </article>
 
         <aside class="guided-side">
@@ -258,7 +278,7 @@ created_at TEXT</textarea>
             <button id="trainerNextBtn" class="btn btn-secondary">Successiva</button>
           </div>
 
-          <div id="trainerFeedback" class="guided-feedback neutral">Carica lo starter e completa il test nel query editor.</div>
+          <div id="trainerFeedback" class="guided-feedback neutral" aria-live="polite">Carica lo starter e completa il test nel query editor.</div>
         </article>
       </div>
     </section>

@@ -171,7 +171,10 @@ const state = {
   autoTimer: null,
   previewTable: "",
   seed: 981245,
-  productPricingCache: new Map()
+  productPricingCache: new Map(),
+  queryHistory: [],
+  pinnedQueries: [],
+  lastResult: null
 };
 
 const dom = {};
@@ -180,6 +183,7 @@ document.addEventListener("DOMContentLoaded", () => {
   cacheDom();
   wireEvents();
   applyDialect("sqlite", { preserveEditor: false });
+  restoreSessionState();
   initGuidedPath();
   initKeywordExplorer();
   initEngine();
@@ -193,6 +197,18 @@ function cacheDom() {
   dom.exportSchemaBtn = document.getElementById("exportSchemaBtn");
   dom.dialectSelect = document.getElementById("dialectSelect");
   dom.loadDialectQueryBtn = document.getElementById("loadDialectQueryBtn");
+  dom.safeRunBtn = document.getElementById("safeRunBtn");
+  dom.explainPlanBtn = document.getElementById("explainPlanBtn");
+  dom.formatSqlBtn = document.getElementById("formatSqlBtn");
+  dom.exportCsvBtn = document.getElementById("exportCsvBtn");
+  dom.saveSessionBtn = document.getElementById("saveSessionBtn");
+  dom.loadSessionBtn = document.getElementById("loadSessionBtn");
+  dom.sessionFileInput = document.getElementById("sessionFileInput");
+  dom.executedSqlText = document.getElementById("executedSqlText");
+  dom.planContainer = document.getElementById("planContainer");
+  dom.planOutput = document.getElementById("planOutput");
+  dom.historySelect = document.getElementById("historySelect");
+  dom.pinQueryBtn = document.getElementById("pinQueryBtn");
   dom.autoRunToggle = document.getElementById("autoRunToggle");
   dom.resultContainer = document.getElementById("resultContainer");
 
@@ -259,6 +275,17 @@ function wireEvents() {
   }
 
   dom.runQueryBtn.addEventListener("click", () => runQuery(dom.queryInput.value));
+  dom.safeRunBtn.addEventListener("click", () => runQueryWithSafety(dom.queryInput.value));
+  dom.explainPlanBtn.addEventListener("click", () => runExplainPlan(dom.queryInput.value));
+  dom.formatSqlBtn.addEventListener("click", () => { dom.queryInput.value = formatSql(dom.queryInput.value); });
+  dom.exportCsvBtn.addEventListener("click", exportLastResultCsv);
+  dom.pinQueryBtn.addEventListener("click", pinCurrentQuery);
+  dom.historySelect.addEventListener("change", () => {
+    if (dom.historySelect.value) dom.queryInput.value = dom.historySelect.value;
+  });
+  dom.saveSessionBtn.addEventListener("click", saveSessionToFile);
+  dom.loadSessionBtn.addEventListener("click", () => dom.sessionFileInput.click());
+  dom.sessionFileInput.addEventListener("change", handleSessionUpload);
 
   dom.resetQueryBtn.addEventListener("click", () => {
     dom.queryInput.value = getDialectDefaultQuery(state.dialect);
@@ -277,6 +304,13 @@ function wireEvents() {
   });
   dom.dialectSelect.addEventListener("change", () => {
     applyDialect(dom.dialectSelect.value, { preserveEditor: true });
+  });
+
+  dom.queryInput.addEventListener("keydown", (event) => {
+    if ((event.ctrlKey || event.metaKey) && event.key === "Enter") {
+      event.preventDefault();
+      runQuery(dom.queryInput.value, { source: "shortcut" });
+    }
   });
 
   dom.queryInput.addEventListener("input", () => {
@@ -353,16 +387,17 @@ function applyDialect(dialect, options = {}) {
 function updateDialectBadge() {
   const label = DIALECTS[state.dialect] || DIALECTS.sqlite;
   if (dom.dialectBadge) {
-    dom.dialectBadge.textContent = `Dialetto: ${label}`;
+    dom.dialectBadge.textContent = `Dialetto esempi: ${label}`;
   }
   if (dom.guidedDialectHint) {
-    dom.guidedDialectHint.textContent = `Dialetto attivo: ${label}`;
+    dom.guidedDialectHint.textContent = `Dialetto esempi attivo: ${label}`;
   }
 }
 
 function initGuidedPath() {
-  state.guidedIndex = 0;
-  state.guidedCompleted = new Set();
+  if (!Number.isFinite(state.guidedIndex)) state.guidedIndex = 0;
+  state.guidedIndex = Math.max(0, Math.min(GUIDED_STEPS.length - 1, state.guidedIndex));
+  if (!(state.guidedCompleted instanceof Set)) state.guidedCompleted = new Set();
   renderGuidedStep();
 }
 
@@ -437,22 +472,35 @@ function checkGuidedStep() {
     return;
   }
 
-  const upper = query.toUpperCase();
-  const required = getGuidedRequiredTokens(step);
-  const missing = required.filter((token) => !upper.includes(token.toUpperCase()));
-
   const outcome = runQuery(query, { source: "guided-check" });
   if (!outcome || !outcome.ok) {
     setGuidedFeedback(`Errore esecuzione: ${outcome?.error || "query non valida"}`, "error");
     return;
   }
 
+  const expected = getStepVerificationExpectations(step);
+  const actual = computeResultSignature(outcome.results?.[0] || { columns: [], values: [] });
+  const mismatches = expected ? buildVerificationSummary(actual, {
+    expectedColumns: expected.columns,
+    expectedRowCount: expected.rowCount,
+    signature: expected.signature
+  }) : [];
+
+  if (mismatches.length) {
+    setGuidedFeedback(`Output non corretto: ${mismatches.join(" | ")}`, "warn");
+    return;
+  }
+
+  const upper = query.toUpperCase();
+  const required = getGuidedRequiredTokens(step);
+  const missing = required.filter((token) => !hasKeywordToken(upper, token.toUpperCase()));
   if (missing.length) {
-    setGuidedFeedback(`Step non ancora completo. Manca: ${missing.join(", ")}`, "warn");
+    setGuidedFeedback(`Risultato corretto, ma manca il concetto richiesto: ${missing.join(", ")}`, "warn");
     return;
   }
 
   state.guidedCompleted.add(step.id);
+  saveLocalProgress();
   setGuidedFeedback("Step completato correttamente. Puoi passare al successivo.", "success");
   renderGuidedStep();
 }
@@ -1328,6 +1376,251 @@ function transpileSqlForEngine(sql, dialect) {
   return transformed;
 }
 
+
+function isSelectWithoutLimit(sql) {
+  const normalized = String(sql || "").replace(/\s+/g, " ").trim();
+  return /^(with\b[\s\S]+?\)\s*)?select\b/i.test(normalized) && !/\blimit\s+\d+/i.test(normalized);
+}
+
+function runQueryWithSafety(query) {
+  const sql = String(query || "");
+  if (isSelectWithoutLimit(sql)) {
+    const proceed = window.confirm("La query e una SELECT senza LIMIT. Vuoi aggiungere LIMIT 200 per evitare freeze UI?");
+    if (proceed) {
+      const patched = /;\s*$/.test(sql) ? sql.replace(/;\s*$/, " LIMIT 200;") : `${sql} LIMIT 200`;
+      dom.queryInput.value = patched;
+      return runQuery(patched, { source: "safe-run" });
+    }
+  }
+  return runQuery(sql, { source: "safe-run" });
+}
+
+function runExplainPlan(query) {
+  if (!state.db) return;
+  const sql = String(query || "").trim().replace(/;\s*$/, "");
+  if (!sql) {
+    setBadge(dom.dbStatus, "Query vuota per EXPLAIN", "error");
+    return;
+  }
+
+  try {
+    const plan = state.db.exec(`EXPLAIN QUERY PLAN ${transpileSqlForEngine(sql, state.dialect)}`);
+    dom.planContainer.hidden = false;
+    if (!plan.length) {
+      dom.planOutput.innerHTML = '<p class="info-block">Nessun piano disponibile.</p>';
+      return;
+    }
+    dom.planOutput.innerHTML = renderTable(plan[0].columns, plan[0].values);
+  } catch (error) {
+    dom.planContainer.hidden = false;
+    dom.planOutput.innerHTML = `<pre class="error-block">${escapeHtml(error.message)}</pre>`;
+  }
+}
+
+function formatSql(sql) {
+  return String(sql || "")
+    .replace(/\s+/g, " ")
+    .replace(/\s*,\s*/g, ", ")
+    .replace(/\b(SELECT|FROM|WHERE|GROUP BY|HAVING|ORDER BY|LIMIT|WITH|JOIN|LEFT JOIN|RIGHT JOIN|INNER JOIN|OUTER JOIN|ON)\b/gi, "\n$1")
+    .replace(/^\s+/, "")
+    .trim();
+}
+
+function renderExecutedSql(sql) {
+  if (dom.executedSqlText) {
+    dom.executedSqlText.textContent = sql || "-";
+  }
+}
+
+function saveLocalProgress() {
+  const payload = {
+    dialect: state.dialect,
+    guidedIndex: state.guidedIndex,
+    guidedCompleted: Array.from(state.guidedCompleted),
+    trainerSelectedKeyword: state.trainerSelectedKeyword,
+    trainerCompleted: Array.from(state.trainerCompleted),
+    queryHistory: state.queryHistory.slice(0, 30),
+    pinnedQueries: state.pinnedQueries,
+    currentQuery: dom.queryInput?.value || ""
+  };
+  localStorage.setItem("sqlexplorer-progress", JSON.stringify(payload));
+}
+
+function restoreSessionState() {
+  try {
+    const raw = localStorage.getItem("sqlexplorer-progress");
+    if (!raw) return;
+    const saved = JSON.parse(raw);
+    state.dialect = saved.dialect || state.dialect;
+    state.guidedIndex = Number.isFinite(saved.guidedIndex) ? saved.guidedIndex : 0;
+    state.guidedCompleted = new Set(saved.guidedCompleted || []);
+    state.trainerSelectedKeyword = saved.trainerSelectedKeyword || "";
+    state.trainerCompleted = new Set(saved.trainerCompleted || []);
+    state.queryHistory = Array.isArray(saved.queryHistory) ? saved.queryHistory.slice(0, 30) : [];
+    state.pinnedQueries = Array.isArray(saved.pinnedQueries) ? saved.pinnedQueries : [];
+    if (saved.currentQuery && dom.queryInput) {
+      dom.queryInput.value = saved.currentQuery;
+    }
+    renderHistorySelect();
+  } catch (_error) {
+    // ignore invalid state
+  }
+}
+
+function saveSessionToFile() {
+  if (!state.db) return;
+  saveLocalProgress();
+  const bytes = state.db.export();
+  const blob = new Blob([bytes], { type: "application/octet-stream" });
+  const url = URL.createObjectURL(blob);
+  const a = document.createElement("a");
+  a.href = url;
+  a.download = "sqlexplorer-session.sqlite";
+  a.click();
+  URL.revokeObjectURL(url);
+  setBadge(dom.dbStatus, "Sessione salvata (.sqlite)", "success");
+}
+
+function handleSessionUpload(event) {
+  const file = event.target.files?.[0];
+  if (!file || !state.SQL) return;
+  const reader = new FileReader();
+  reader.onload = () => {
+    try {
+      const data = new Uint8Array(reader.result);
+      if (state.db) state.db.close();
+      state.db = new state.SQL.Database(data);
+      createSqlFunctions();
+      refreshTableSelector();
+      runQuery(dom.queryInput.value || "SELECT name FROM sqlite_master LIMIT 20;", { source: "session-load" });
+      setBadge(dom.dbStatus, "Sessione DB caricata", "success");
+    } catch (error) {
+      setBadge(dom.dbStatus, `Errore caricamento sessione: ${error.message}`, "error");
+    }
+  };
+  reader.readAsArrayBuffer(file);
+  event.target.value = "";
+}
+
+function rememberQuery(query) {
+  const trimmed = String(query || "").trim();
+  if (!trimmed) return;
+  state.queryHistory = [trimmed, ...state.queryHistory.filter((item) => item !== trimmed)].slice(0, 30);
+  renderHistorySelect();
+}
+
+function pinCurrentQuery() {
+  const current = String(dom.queryInput?.value || "").trim();
+  if (!current) return;
+  state.pinnedQueries = [current, ...state.pinnedQueries.filter((q) => q !== current)].slice(0, 20);
+  renderHistorySelect();
+  saveLocalProgress();
+}
+
+function renderHistorySelect() {
+  if (!dom.historySelect) return;
+  const options = [
+    `<option value="">Cronologia query</option>`,
+    ...state.pinnedQueries.map((query) => `<option value="${escapeHtml(query)}">📌 ${escapeHtml(query.slice(0, 70))}</option>`),
+    ...state.queryHistory.map((query) => `<option value="${escapeHtml(query)}">${escapeHtml(query.slice(0, 90))}</option>`)
+  ];
+  dom.historySelect.innerHTML = options.join("");
+}
+
+function exportLastResultCsv() {
+  if (!state.lastResult || !state.lastResult.columns?.length) {
+    setBadge(dom.dbStatus, "Nessun risultato tabellare da esportare", "error");
+    return;
+  }
+
+  const columns = state.lastResult.columns;
+  const rows = state.lastResult.values || [];
+  const lines = [columns, ...rows]
+    .map((row) => row.map((value) => `"${String(value ?? "").replaceAll('"', '""')}"`).join(","))
+    .join("\n");
+
+  const blob = new Blob([lines], { type: "text/csv;charset=utf-8" });
+  const url = URL.createObjectURL(blob);
+  const link = document.createElement("a");
+  link.href = url;
+  link.download = "query-result.csv";
+  link.click();
+  URL.revokeObjectURL(url);
+}
+
+function normalizeResultSet(result) {
+  const columns = [...(result?.columns || [])].map((col) => String(col));
+  const rows = [...(result?.values || [])].map((row) => row.map((v) => (v === null ? null : String(v))));
+  const sortedCols = [...columns].sort((a, b) => a.localeCompare(b));
+  const indices = sortedCols.map((col) => columns.indexOf(col));
+  const normalizedRows = rows
+    .map((row) => indices.map((index) => row[index]))
+    .sort((a, b) => JSON.stringify(a).localeCompare(JSON.stringify(b)));
+
+  return { columns: sortedCols, rows: normalizedRows };
+}
+
+function hashString(value) {
+  let hash = 2166136261;
+  for (let i = 0; i < value.length; i += 1) {
+    hash ^= value.charCodeAt(i);
+    hash = Math.imul(hash, 16777619);
+  }
+  return (hash >>> 0).toString(16);
+}
+
+function computeResultSignature(result) {
+  const normalized = normalizeResultSet(result);
+  return {
+    columns: normalized.columns,
+    rowCount: normalized.rows.length,
+    signature: hashString(JSON.stringify(normalized))
+  };
+}
+
+function buildVerificationSummary(actual, expected) {
+  const messages = [];
+  if (expected.expectedColumns?.length) {
+    const sameColumns = JSON.stringify(actual.columns) === JSON.stringify(expected.expectedColumns);
+    if (!sameColumns) {
+      messages.push(`Colonne attese: [${expected.expectedColumns.join(", ")}], ricevute: [${actual.columns.join(", ")}]`);
+    }
+  }
+
+  if (Number.isFinite(expected.expectedRowCount) && actual.rowCount !== expected.expectedRowCount) {
+    messages.push(`Row count atteso: ${expected.expectedRowCount}, ricevuto: ${actual.rowCount}`);
+  }
+
+  if (Number.isFinite(expected.minRowCount) && actual.rowCount < expected.minRowCount) {
+    messages.push(`Row count troppo basso: minimo ${expected.minRowCount}, ricevuto ${actual.rowCount}`);
+  }
+
+  if (Number.isFinite(expected.maxRowCount) && actual.rowCount > expected.maxRowCount) {
+    messages.push(`Row count troppo alto: massimo ${expected.maxRowCount}, ricevuto ${actual.rowCount}`);
+  }
+
+  if (expected.signature && actual.signature !== expected.signature) {
+    messages.push("I valori risultanti non coincidono con l'output atteso.");
+  }
+
+  return messages;
+}
+
+function getStepVerificationExpectations(step) {
+  const solution = getGuidedVariant(step, "solution") || getGuidedVariant(step, "starter");
+  if (!solution || !state.db) return null;
+  const expectedSql = transpileSqlForEngine(solution, state.dialect);
+  const expectedResult = state.db.exec(expectedSql)[0] || { columns: [], values: [] };
+  return computeResultSignature(expectedResult);
+}
+
+function getTrainerVerificationExpectations(challenge) {
+  if (!challenge.solution || !challenge.executable || !state.db) return null;
+  const expectedSql = transpileSqlForEngine(challenge.solution, state.dialect);
+  const expectedResult = state.db.exec(expectedSql)[0] || { columns: [], values: [] };
+  return computeResultSignature(expectedResult);
+}
+
 function runQuery(query, options = {}) {
   if (!state.db) return { ok: false, error: "Database non inizializzato" };
 
@@ -1338,6 +1631,7 @@ function runQuery(query, options = {}) {
   }
 
   const executableSql = transpileSqlForEngine(sql, state.dialect);
+  renderExecutedSql(executableSql);
   const start = performance.now();
 
   try {
@@ -1349,6 +1643,9 @@ function runQuery(query, options = {}) {
     updateStats(executableSql, results, elapsed, rowsModified);
 
     setBadge(dom.dbStatus, options.source === "auto" ? "Query auto-run OK" : "Query eseguita", "success");
+    rememberQuery(sql);
+    saveLocalProgress();
+    state.lastResult = results?.[0] || null;
 
     if (!startsWithSelect(executableSql)) {
       refreshTableSelector();
@@ -2064,22 +2361,37 @@ function checkTrainerKeyword() {
     return;
   }
 
-  const queryUpper = query.toUpperCase();
-  const missingTokens = challenge.requiredTokens.filter((token) => !hasKeywordToken(queryUpper, token.toUpperCase()));
-  if (missingTokens.length) {
-    setTrainerFeedback(`Test incompleto. Token mancanti: ${missingTokens.join(", ")}`, "warn");
-    return;
-  }
-
   if (challenge.executable) {
     const result = runQuery(query, { source: "trainer-check" });
     if (!result?.ok) {
       setTrainerFeedback(`Keyword presente ma query non valida: ${result?.error || "errore SQL"}`, "error");
       return;
     }
+
+    const expected = getTrainerVerificationExpectations(challenge);
+    if (expected) {
+      const actual = computeResultSignature(result.results?.[0] || { columns: [], values: [] });
+      const mismatches = buildVerificationSummary(actual, {
+        expectedColumns: expected.columns,
+        expectedRowCount: expected.rowCount,
+        signature: expected.signature
+      });
+      if (mismatches.length) {
+        setTrainerFeedback(`Output non corretto: ${mismatches.join(" | ")}`, "warn");
+        return;
+      }
+    }
+  }
+
+  const queryUpper = query.toUpperCase();
+  const missingTokens = challenge.requiredTokens.filter((token) => !hasKeywordToken(queryUpper, token.toUpperCase()));
+  if (missingTokens.length) {
+    setTrainerFeedback(`Risultato corretto, ma manca il concetto richiesto: ${missingTokens.join(", ")}`, "warn");
+    return;
   }
 
   state.trainerCompleted.add(entry.keyword);
+  saveLocalProgress();
   setTrainerFeedback("Test completato correttamente per questa keyword.", "success");
   renderTrainerList();
 }
