@@ -80,9 +80,9 @@ const GUIDED_STEPS = [
     hint: "Usa WHERE sul segmento, ORDER BY e LIMIT/TOP.",
     topics: ["SELECT", "WHERE", "ORDER BY", "LIMIT/TOP"],
     starter: {
-      sqlite: "SELECT id, name, segment, credit_limit\nFROM customers\n-- TODO: filtra segmento Enterprise\nORDER BY credit_limit DESC\nLIMIT 20;",
-      postgresql: "SELECT id, name, segment, credit_limit\nFROM customers\n-- TODO: filtra segmento Enterprise\nORDER BY credit_limit DESC\nLIMIT 20;",
-      sqlserver: "SELECT TOP 20 id, name, segment, credit_limit\nFROM customers\n-- TODO: filtra segmento Enterprise\nORDER BY credit_limit DESC;"
+      sqlite: "SELECT id, name, segment, credit_limit\nFROM customers\n/* TODO: filtra segmento Enterprise */\nORDER BY credit_limit DESC\nLIMIT 20;",
+      postgresql: "SELECT id, name, segment, credit_limit\nFROM customers\n/* TODO: filtra segmento Enterprise */\nORDER BY credit_limit DESC\nLIMIT 20;",
+      sqlserver: "SELECT TOP 20 id, name, segment, credit_limit\nFROM customers\n/* TODO: filtra segmento Enterprise */\nORDER BY credit_limit DESC;"
     },
     solution: {
       sqlite: "SELECT id, name, segment, credit_limit\nFROM customers\nWHERE segment = 'Enterprise'\nORDER BY credit_limit DESC\nLIMIT 20;",
@@ -174,7 +174,9 @@ const state = {
   productPricingCache: new Map(),
   queryHistory: [],
   pinnedQueries: [],
-  lastResult: null
+  lastResult: null,
+  todoMatches: [],
+  todoCursor: -1
 };
 
 const dom = {};
@@ -184,6 +186,7 @@ document.addEventListener("DOMContentLoaded", () => {
   wireEvents();
   applyDialect("sqlite", { preserveEditor: false });
   restoreSessionState();
+  applyQueryStringPrefill();
   initGuidedPath();
   initKeywordExplorer();
   initEngine();
@@ -266,6 +269,9 @@ function cacheDom() {
   dom.guidedCheckBtn = document.getElementById("guidedCheckBtn");
   dom.guidedSolutionBtn = document.getElementById("guidedSolutionBtn");
   dom.guidedNextBtn = document.getElementById("guidedNextBtn");
+  dom.todoNav = document.getElementById("todoNav");
+  dom.todoSummary = document.getElementById("todoSummary");
+  dom.todoNextBtn = document.getElementById("todoNextBtn");
 }
 
 function wireEvents() {
@@ -294,7 +300,12 @@ function wireEvents() {
 
   dom.regenDataBtn.addEventListener("click", () => {
     initDemoDatabase();
-    runQuery(dom.queryInput.value);
+    if (state.autoRunFromUrl) {
+      runQuery(dom.queryInput.value, { source: "url-autorun" });
+      state.autoRunFromUrl = false;
+    } else {
+      runQuery(dom.queryInput.value);
+    }
   });
 
   dom.exportSchemaBtn.addEventListener("click", copySchemaToClipboard);
@@ -327,6 +338,10 @@ function wireEvents() {
   });
 
   dom.createTableBtn.addEventListener("click", createCustomTable);
+
+  if (dom.todoNextBtn) {
+    dom.todoNextBtn.addEventListener("click", jumpToNextTodo);
+  }
 
   Array.from(document.querySelectorAll(".exercise-btn")).forEach((btn) => {
     btn.addEventListener("click", () => {
@@ -472,6 +487,13 @@ function checkGuidedStep() {
     return;
   }
 
+  const todos = findTodoOccurrences(query);
+  if (todos.length) {
+    setTodoMatches(todos, "guided");
+    setGuidedFeedback(`TODO trovati: ${todos.length}. Completa i placeholder prima del check.`, "warn");
+    return;
+  }
+
   const outcome = runQuery(query, { source: "guided-check" });
   if (!outcome || !outcome.ok) {
     setGuidedFeedback(`Errore esecuzione: ${outcome?.error || "query non valida"}`, "error");
@@ -518,7 +540,12 @@ async function initEngine() {
     });
 
     initDemoDatabase();
-    runQuery(dom.queryInput.value);
+    if (state.autoRunFromUrl) {
+      runQuery(dom.queryInput.value, { source: "url-autorun" });
+      state.autoRunFromUrl = false;
+    } else {
+      runQuery(dom.queryInput.value);
+    }
   } catch (error) {
     setBadge(dom.dbStatus, "Errore engine SQL", "error");
     dom.resultContainer.innerHTML = `<pre class="error-block">${escapeHtml(error.message)}</pre>`;
@@ -1625,6 +1652,7 @@ function runQuery(query, options = {}) {
   if (!state.db) return { ok: false, error: "Database non inizializzato" };
 
   const sql = (query || "").trim();
+  setTodoMatches(findTodoOccurrences(query || ""));
   if (!sql) {
     dom.resultContainer.innerHTML = '<p class="placeholder">Scrivi una query SQL per iniziare.</p>';
     return { ok: false, error: "Query vuota" };
@@ -1997,6 +2025,53 @@ function copySchemaToClipboard() {
   }
 }
 
+function applyQueryStringPrefill() {
+  const params = new URLSearchParams(window.location.search);
+  const dialect = params.get("dialect");
+  const query = params.get("q");
+  const autorun = params.get("autorun") === "1";
+
+  if (dialect) {
+    applyDialect(dialect, { preserveEditor: true });
+  }
+  if (query && dom.queryInput) {
+    dom.queryInput.value = query;
+  }
+
+  state.autoRunFromUrl = autorun;
+}
+
+function findTodoOccurrences(text) {
+  const matches = [];
+  const regex = /\/\*\s*TODO:[\s\S]*?\*\//gi;
+  let m;
+  while ((m = regex.exec(text)) !== null) {
+    matches.push({ start: m.index, end: m.index + m[0].length });
+  }
+  return matches;
+}
+
+function setTodoMatches(matches) {
+  state.todoMatches = matches;
+  state.todoCursor = -1;
+  if (!dom.todoNav || !dom.todoSummary || !dom.todoNextBtn) return;
+  if (!matches.length) {
+    dom.todoNav.hidden = true;
+    return;
+  }
+  dom.todoNav.hidden = false;
+  dom.todoSummary.textContent = `TODO trovati: ${matches.length}`;
+  dom.todoNextBtn.disabled = false;
+}
+
+function jumpToNextTodo() {
+  if (!dom.queryInput || !state.todoMatches.length) return;
+  state.todoCursor = (state.todoCursor + 1) % state.todoMatches.length;
+  const current = state.todoMatches[state.todoCursor];
+  dom.queryInput.focus();
+  dom.queryInput.setSelectionRange(current.start, current.end);
+}
+
 function setBadge(el, text, type) {
   el.textContent = text;
   el.className = `badge ${type}`;
@@ -2356,8 +2431,10 @@ function checkTrainerKeyword() {
     return;
   }
 
-  if (/\bTODO\b/i.test(query)) {
-    setTrainerFeedback("Completa prima i TODO presenti nello starter.", "warn");
+  const todos = findTodoOccurrences(query);
+  if (todos.length) {
+    setTodoMatches(todos, "trainer");
+    setTrainerFeedback(`TODO trovati: ${todos.length}. Completa gli placeholder prima della verifica.`, "warn");
     return;
   }
 
@@ -2435,7 +2512,7 @@ function buildKeywordChallenge(entry) {
     objective = `Completa una query di lettura usando ${keyword} correttamente.`;
     starter = `SELECT id, customer_id, status, total_amount
 FROM orders
--- TODO usa ${keyword} in modo coerente
+/* TODO: usa ${keyword} in modo coerente */
 LIMIT 20;`;
     solution = solution && !solution.startsWith("--")
       ? solution
@@ -2446,7 +2523,7 @@ LIMIT 20;`;
     starter = `SELECT o.id, c.name, o.total_amount
 FROM orders o
 JOIN customers c ON c.id = o.customer_id
--- TODO usa ${keyword} in modo coerente
+/* TODO: usa ${keyword} in modo coerente */
 LIMIT 20;`;
 
     if (k === "USING") {
@@ -2479,7 +2556,7 @@ LIMIT 20;`;
     starter = `SELECT c.segment, SUM(o.total_amount) AS revenue
 FROM customers c
 JOIN orders o ON o.customer_id = c.id
--- TODO usa ${keyword}
+/* TODO: usa ${keyword} */
 LIMIT 20;`;
     solution = k === "HAVING"
       ? `SELECT c.segment, ROUND(SUM(o.total_amount), 2) AS revenue
@@ -2500,7 +2577,7 @@ ORDER BY revenue DESC;`;
   SELECT substr(order_date, 1, 7) AS mese,
          SUM(total_amount) AS totale
   FROM orders
-  -- TODO usa ${keyword} dove serve
+  /* TODO: usa ${keyword} dove serve */
   GROUP BY substr(order_date, 1, 7)
 )
 SELECT * FROM monthly
@@ -2523,7 +2600,7 @@ SELECT * FROM monthly ORDER BY mese;`;
   } else if (k === "UNION" || k === "INTERSECT" || k === "EXCEPT") {
     objective = `Combina due result set con ${keyword}.`;
     starter = `SELECT customer_id FROM orders WHERE status = 'PAID'
--- TODO usa ${keyword}
+/* TODO: usa ${keyword} */
 SELECT customer_id FROM orders WHERE status = 'SHIPPED';`;
     solution = k === "INTERSECT"
       ? `SELECT customer_id FROM orders WHERE status = 'PAID'
@@ -2541,7 +2618,7 @@ SELECT customer_id FROM orders WHERE status = 'SHIPPED';`;
     objective = `Classifica i record usando una espressione ${keyword}.`;
     starter = `SELECT id, total_amount,
        CASE
-         -- TODO completa CASE con ${keyword}
+         /* TODO: completa CASE con ${keyword} */
        END AS amount_bucket
 FROM orders
 LIMIT 20;`;
@@ -2557,7 +2634,7 @@ LIMIT 20;`;
   } else if (["CAST", "CONVERT", "TRY_CONVERT", "COALESCE", "NULLIF"].includes(k)) {
     objective = `Esegui conversioni/gestione null con ${keyword}.`;
     starter = `SELECT id, total_amount,
-       -- TODO usa ${keyword}
+       /* TODO: usa ${keyword} */
 FROM orders
 LIMIT 20;`;
     if (k === "COALESCE") {
@@ -2594,7 +2671,7 @@ LIMIT 20;`;
   } else if (["OVER", "PARTITION", "ROWS", "RANGE", "GROUPS", "LAG", "LEAD", "ROW_NUMBER", "WINDOW", "FILTER"].includes(k)) {
     objective = `Costruisci un calcolo analitico con ${keyword}.`;
     starter = `SELECT customer_id, order_date, total_amount,
-       -- TODO usa ${keyword}
+       /* TODO: usa ${keyword} */
 FROM orders
 LIMIT 40;`;
     solution = k === "ROW_NUMBER"
@@ -2612,7 +2689,7 @@ FROM orders;`;
   } else if (["INSERT", "INTO", "VALUES"].includes(k)) {
     objective = `Inserisci dati di test in sicurezza usando ${keyword}.`;
     starter = `BEGIN;
--- TODO usa ${keyword}
+/* TODO: usa ${keyword} */
 ROLLBACK;`;
     solution = `BEGIN;
 INSERT INTO customer_notes (customer_id, note_date, note_type, note_text, author_employee_id)
@@ -2623,7 +2700,7 @@ ROLLBACK;`;
   } else if (["UPDATE", "SET", "DELETE"].includes(k)) {
     objective = `Aggiorna o rimuovi dati in una transazione controllata con ${keyword}.`;
     starter = `BEGIN;
--- TODO usa ${keyword}
+/* TODO: usa ${keyword} */
 ROLLBACK;`;
     solution = k === "DELETE"
       ? `BEGIN;
@@ -2643,7 +2720,7 @@ ROLLBACK;`;
     objective = `Gestisci i confini transazionali usando ${keyword}.`;
     starter = `BEGIN;
 UPDATE products SET stock = stock WHERE id = 1;
--- TODO usa ${keyword}
+/* TODO: usa ${keyword} */
 ROLLBACK;`;
     solution = `BEGIN;
 SAVEPOINT sp_train;
@@ -2656,14 +2733,15 @@ ROLLBACK;`;
     objective = "Completa un flusso transazionale includendo COMMIT nella sequenza corretta.";
     starter = `BEGIN;
 UPDATE products SET stock = stock WHERE id = 1;
--- TODO aggiungi COMMIT nel punto corretto`;
+/* TODO: aggiungi COMMIT nel punto corretto */
+ROLLBACK;`;
     solution = `BEGIN;
 UPDATE products SET stock = stock WHERE id = 1;
 COMMIT;`;
     executable = false;
   } else if (["CREATE TABLE", "ALTER TABLE", "CREATE INDEX", "DROP TABLE", "CREATE", "ALTER", "DROP", "TABLE", "INDEX"].includes(k)) {
     objective = `Esegui una modifica schema minima usando ${keyword}.`;
-    starter = `-- TODO usa ${keyword} in una DDL minima`;
+    starter = `/* TODO: usa ${keyword} in una DDL minima */`;
     if (k === "ALTER TABLE" || k === "ALTER") {
       solution = `CREATE TEMP TABLE trainer_alter (id INTEGER PRIMARY KEY);
 ALTER TABLE trainer_alter ADD COLUMN note TEXT;`;
@@ -2679,7 +2757,7 @@ DROP TABLE trainer_drop;`;
     executable = true;
   } else if (k === "EXPLAIN" || k === "PLAN" || k === "PRAGMA" || k === "ANALYZE") {
     objective = `Ispeziona meta-informazioni o piano usando ${keyword}.`;
-    starter = `-- TODO usa ${keyword}`;
+    starter = `/* TODO: usa ${keyword} */`;
     solution = k === "PRAGMA"
       ? `PRAGMA table_info("orders");`
       : k === "ANALYZE"
@@ -2689,7 +2767,7 @@ DROP TABLE trainer_drop;`;
   } else if (["GRANT", "REVOKE", "ROLE", "USER", "PROCEDURE", "FUNCTION", "TRUNCATE", "MERGE"].includes(k) || entry.category === "Sicurezza") {
     objective = `Test teorico: descrivi e scrivi la sintassi base di ${keyword}.`;
     starter = `-- Test teorico (non eseguibile su SQLite)
--- TODO scrivi una riga SQL che usa ${keyword}`;
+/* TODO: scrivi una riga SQL che usa ${keyword} */`;
     solution = sample && !sample.startsWith("--")
       ? sample
       : `${keyword} ...;`;
@@ -2715,11 +2793,11 @@ function getGenericTrainerStarter(entry) {
   const syntaxHint = entry.syntax || inferSyntax(entry.keyword, entry.category);
   if (entry.category === "DML" || entry.category === "Transazioni") {
     return `BEGIN;
--- TODO usa ${entry.keyword}
+/* TODO: usa ${entry.keyword} */
 ROLLBACK;`;
   }
   if (entry.category === "DDL") {
-    return `-- TODO usa ${entry.keyword}
+    return `/* TODO: usa ${entry.keyword} */
 -- Hint: ${syntaxHint}`;
   }
   return `-- Obiettivo: usa ${entry.keyword}
