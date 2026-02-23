@@ -2988,82 +2988,144 @@ function inferDescription(keyword, category) {
   if (k === "SELECT") return "Proietta colonne e costruisce il result set finale della query.";
   if (k === "FROM") return "Definisce la sorgente dati: tabella, vista, CTE o subquery.";
   if (k === "WHERE") return "Applica filtri riga-prima-riga prima di aggregazioni e window finali.";
-  if (k === "ORDER BY" || k === "ORDER") return "Ordina il risultato secondo una o piu espressioni.";
-  if (k === "LIMIT" || k === "TOP") return "Riduce il numero di righe restituite.";
+  if (k === "ORDER BY" || k === "ORDER") return "Ordina il risultato secondo una o piu espressioni con direzione ASC o DESC.";
+  if (k === "LIMIT") return "Riduce il numero di righe restituite dalla query (SQLite/PostgreSQL).";
+  if (k === "TOP") return "Riduce il numero di righe restituite dalla query (sintassi SQL Server).";
   if (k === "OFFSET") return "Salta le prime N righe, utile con paginazione.";
   if (k === "DISTINCT") return "Elimina duplicati sul set di colonne selezionate.";
   if (k === "AS") return "Assegna alias a colonne, tabelle o espressioni.";
   if (k === "BY") return "Completa clausole come ORDER BY, GROUP BY e PARTITION BY.";
-  if (k === "AND" || k === "OR" || k === "NOT") return "Combina o nega condizioni booleane nei filtri.";
-  if (k === "JOIN" || k.endsWith("JOIN")) return "Combina due sorgenti relazionali usando una condizione di join.";
-  if (["LEFT", "RIGHT", "INNER", "OUTER", "CROSS", "NATURAL", "FULL"].includes(k)) return "Modifica il comportamento della JOIN (matching e cardinalita).";
-  if (k === "ON" || k === "USING") return "Specifica la regola con cui le righe delle tabelle vengono allineate.";
-  if (k === "GROUP BY" || k === "GROUP") return "Raggruppa righe con stessa chiave per calcolare aggregate.";
+  if (k === "AND") return "Operatore logico che richiede che entrambe le condizioni siano vere.";
+  if (k === "OR") return "Operatore logico che richiede che almeno una delle condizioni sia vera.";
+  if (k === "NOT") return "Operatore logico che nega il valore di una condizione.";
+  if (k === "JOIN") return "Combina righe di due tabelle restituendo solo le coppie che soddisfano la condizione ON (INNER JOIN implicito).";
+  if (k === "LEFT JOIN") return "Mantiene tutte le righe della tabella sinistra anche senza corrispondenza a destra (NULL).";
+  if (k === "RIGHT JOIN") return "Mantiene tutte le righe della tabella destra anche senza corrispondenza a sinistra (NULL).";
+  if (k === "FULL JOIN") return "Mantiene tutte le righe di entrambe le tabelle, con NULL dove non c'e corrispondenza.";
+  if (k === "LEFT") return "Prefisso per LEFT JOIN: mantiene tutte le righe della sorgente sinistra.";
+  if (k === "RIGHT") return "Prefisso per RIGHT JOIN: mantiene tutte le righe della sorgente destra.";
+  if (k === "INNER") return "Prefisso per INNER JOIN: restituisce solo righe con match in entrambe le tabelle.";
+  if (k === "OUTER") return "Prefisso per LEFT/RIGHT/FULL OUTER JOIN: include righe senza corrispondenza.";
+  if (k === "CROSS") return "Produce il prodotto cartesiano tra due tabelle: ogni riga di A combinata con ogni riga di B.";
+  if (k === "NATURAL") return "Join implicita su tutte le colonne con lo stesso nome — sconsigliata per ambiguita.";
+  if (k === "FULL") return "Prefisso per FULL OUTER JOIN: include tutte le righe, con match e senza.";
+  if (k === "ON") return "Specifica la condizione di corrispondenza tra colonne nelle clausole JOIN.";
+  if (k === "USING") return "Clausola JOIN che unisce su colonne con lo stesso nome in entrambe le tabelle.";
+  if (k === "GROUP BY" || k === "GROUP") return "Raggruppa righe con stessa chiave per calcolare funzioni aggregate.";
   if (k === "HAVING") return "Filtra i gruppi dopo il calcolo delle funzioni aggregate.";
-  if (k === "WITH" || k === "RECURSIVE") return "Crea CTE per spezzare o ricorsivizzare una query complessa.";
-  if (k === "CASE" || k === "WHEN" || k === "THEN" || k === "ELSE" || k === "END") {
-    return "Costruisce logica condizionale inline dentro SELECT, ORDER BY e GROUP BY.";
-  }
-  if (k === "EXISTS" || k === "IN" || k === "BETWEEN" || k === "LIKE") {
-    return "Supporta filtri semantici tipici su insiemi, intervalli e pattern testuali.";
-  }
-  if (k === "UNION" || k === "INTERSECT" || k === "EXCEPT") {
-    return "Combina o confronta result set compatibili per numero e tipo di colonne.";
-  }
+  if (k === "WITH") return "Definisce una Common Table Expression (CTE): blocco query riutilizzabile nella query principale.";
+  if (k === "RECURSIVE") return "Abilita CTE ricorsive per navigare gerarchie o grafi con query iterative.";
+  if (k === "CASE") return "Introduce logica condizionale inline dentro SELECT, WHERE o ORDER BY.";
+  if (k === "WHEN") return "Definisce una condizione all'interno di un blocco CASE.";
+  if (k === "THEN") return "Specifica il valore da restituire quando la condizione WHEN e vera.";
+  if (k === "ELSE") return "Specifica il valore di fallback quando nessuna condizione WHEN e vera.";
+  if (k === "END") return "Chiude un blocco CASE WHEN...THEN...ELSE.";
+  if (k === "EXISTS") return "Restituisce TRUE se la subquery correlata produce almeno una riga.";
+  if (k === "IN") return "Verifica se un valore appartiene a una lista esplicita o al result set di una subquery.";
+  if (k === "BETWEEN") return "Filtra righe il cui valore e compreso nell'intervallo chiuso [min, max].";
+  if (k === "LIKE") return "Filtra righe tramite pattern matching testuale con wildcard % e _.";
+  if (k === "UNION") return "Combina result set di SELECT compatibili eliminando duplicati.";
+  if (k === "INTERSECT") return "Restituisce solo le righe presenti in entrambi i result set.";
+  if (k === "EXCEPT") return "Restituisce solo le righe del primo result set non presenti nel secondo.";
 
   if (k === "CONVERT") {
-    if (state.dialect === "sqlserver") return "Converte un valore in SQL Server con supporto stile opzionale.";
-    if (state.dialect === "postgresql") return "PostgreSQL preferisce CAST o operatore :: come alternativa a CONVERT.";
+    if (state.dialect === "sqlserver") return "Converte un valore in SQL Server con supporto stile opzionale per formattazione.";
+    if (state.dialect === "postgresql") return "PostgreSQL non ha CONVERT nativo: usare CAST o operatore :: come alternativa.";
     return "Converte esplicitamente un valore; nel lab usa la funzione custom CONVERT(tipo, valore).";
   }
   if (k === "TRY_CONVERT") {
-    if (state.dialect === "sqlserver") return "Converte in modo safe: ritorna NULL se conversione fallisce.";
-    if (state.dialect === "postgresql") return "Non nativa: si ottiene un comportamento simile con CASE/NULLIF + CAST.";
-    return "Converte senza errore fatale: quando conversione fallisce ritorna NULL.";
+    if (state.dialect === "sqlserver") return "Converte in modo safe in SQL Server: ritorna NULL se la conversione fallisce.";
+    if (state.dialect === "postgresql") return "Non nativa in PostgreSQL: equivalente con CASE/NULLIF + CAST.";
+    return "Conversione tollerante: ritorna NULL quando la conversione fallisce invece di errore.";
   }
-  if (k === "OVER" || k === "PARTITION" || k === "ROWS" || k === "RANGE") {
-    return "Definisce la finestra per calcoli analitici mantenendo il dettaglio per riga.";
-  }
-  if (k === "INSERT" || k === "INTO" || k === "VALUES") return "Inserisce nuove righe in modo puntuale o bulk.";
-  if (k === "UPDATE" || k === "SET") return "Aggiorna valori esistenti secondo assegnazioni e filtri.";
-  if (k === "DELETE") return "Rimuove righe esistenti in base a una condizione.";
-  if (k === "RETURNING") return "Ritorna valori delle righe toccate da DML senza query aggiuntive.";
-  if (k === "MERGE") return "Unifica insert/update/delete condizionati in un unico statement.";
-  if (k === "BEGIN" || k === "COMMIT" || k === "ROLLBACK" || k === "SAVEPOINT") {
-    return "Gestisce confini e recupero delle transazioni.";
-  }
-  if (k === "CREATE" || k === "ALTER" || k === "DROP" || k === "TABLE" || k === "INDEX") {
-    return "Definisce o modifica oggetti strutturali dello schema dati.";
-  }
-  if (k === "EXPLAIN" || k === "PLAN") return "Espone il piano di esecuzione per analizzare costi e scansioni.";
-  if (k === "GRANT" || k === "REVOKE" || k === "ROLE" || k === "USER") {
-    return "Riguarda privilegi, ruoli e sicurezza a livello DBMS.";
-  }
+  if (k === "CAST") return "Converte esplicitamente un valore da un tipo a un altro — standard SQL supportato da tutti i DBMS.";
+  if (k === "COALESCE") return "Restituisce il primo valore non NULL nella lista di argomenti.";
+  if (k === "NULLIF") return "Restituisce NULL se i due argomenti sono uguali, altrimenti il primo — utile per evitare divisioni per zero.";
+  if (k === "OVER") return "Definisce la finestra per calcoli analitici mantenendo il dettaglio per riga.";
+  if (k === "PARTITION") return "Suddivide i dati in partizioni logiche all'interno della clausola OVER.";
+  if (k === "ROWS") return "Specifica un frame basato su conteggio fisico di righe nella finestra analitica.";
+  if (k === "RANGE") return "Specifica un frame basato su intervallo di valori nella finestra analitica.";
+  if (k === "FILTER") return "Limita i dati passati a una funzione aggregata in base a una condizione WHERE.";
+  if (k === "INSERT") return "Aggiunge una o piu righe nuove a una tabella specificando valori per le colonne.";
+  if (k === "INTO") return "Specifica la tabella di destinazione in un INSERT INTO.";
+  if (k === "VALUES") return "Fornisce i valori letterali da inserire nella tabella in un INSERT.";
+  if (k === "UPDATE") return "Modifica i valori di colonne esistenti nelle righe che soddisfano il WHERE.";
+  if (k === "SET") return "Assegna nuovi valori alle colonne in un'istruzione UPDATE.";
+  if (k === "DELETE") return "Rimuove le righe che soddisfano la condizione WHERE dalla tabella.";
+  if (k === "RETURNING") return "Restituisce i valori delle righe toccate da INSERT/UPDATE/DELETE senza query aggiuntiva.";
+  if (k === "MERGE") return "Unifica INSERT/UPDATE/DELETE condizionati in un unico statement (SQL Server/PostgreSQL 15+).";
+  if (k === "BEGIN") return "Apre un blocco transazionale: le operazioni successive saranno atomiche fino a COMMIT o ROLLBACK.";
+  if (k === "COMMIT") return "Conferma permanentemente tutte le modifiche della transazione corrente.";
+  if (k === "ROLLBACK") return "Annulla tutte le modifiche della transazione corrente e ripristina lo stato precedente.";
+  if (k === "SAVEPOINT") return "Crea un punto di ripristino intermedio dentro una transazione aperta.";
+  if (k === "RELEASE") return "Rilascia un savepoint precedentemente creato senza annullare le modifiche.";
+  if (k === "TRANSACTION") return "Identifica il blocco transazionale in istruzioni BEGIN/COMMIT/ROLLBACK TRANSACTION.";
+  if (k === "CREATE TABLE") return "Definisce una nuova tabella con struttura colonne, tipi e vincoli.";
+  if (k === "ALTER TABLE") return "Modifica la struttura di una tabella esistente: aggiungere/rimuovere colonne e vincoli.";
+  if (k === "CREATE INDEX") return "Crea una struttura di accesso che accelera ricerche su colonne specifiche.";
+  if (k === "CREATE") return "Crea un oggetto schema: tabella, vista, indice o trigger.";
+  if (k === "ALTER") return "Modifica la struttura di un oggetto schema esistente.";
+  if (k === "DROP") return "Elimina permanentemente un oggetto schema dal database.";
+  if (k === "TABLE" && category === "DDL") return "Parola chiave DDL che identifica l'oggetto tabella in CREATE/ALTER/DROP.";
+  if (k === "INDEX") return "Parola chiave DDL che identifica un indice in CREATE/DROP.";
+  if (k === "EXPLAIN") return "Mostra il piano di esecuzione della query rivelando scansioni, indici e costi.";
+  if (k === "PLAN") return "Complemento di EXPLAIN QUERY PLAN in SQLite per mostrare il piano di esecuzione.";
+  if (k === "GRANT") return "Assegna privilegi specifici su un oggetto a un utente o ruolo.";
+  if (k === "REVOKE") return "Revoca privilegi precedentemente assegnati a un utente o ruolo.";
+  if (k === "ROLE") return "Definisce un ruolo di sicurezza per raggruppare privilegi nel DBMS.";
+  if (k === "USER") return "Identifica un utente del database per la gestione degli accessi.";
 
-  if (category === "DDL") return `${k} e una keyword di definizione schema (creazione o modifica oggetti).`;
-  if (category === "DML") return `${k} e una keyword di manipolazione dati (inserimento, aggiornamento o cancellazione).`;
+  if (category === "DDL") return `${k} e una keyword DDL per la definizione o modifica di oggetti schema.`;
+  if (category === "DML") return `${k} e una keyword DML per la manipolazione di righe e dati.`;
   if (category === "Transazioni") return `${k} controlla il flusso ACID di una transazione SQL.`;
-  if (category === "Sicurezza") return `${k} riguarda privilegi o gestione accessi in DBMS che supportano security SQL.`;
+  if (category === "Sicurezza") return `${k} riguarda privilegi o gestione accessi nel DBMS.`;
   return `${k} e una keyword usata in query, espressioni o funzionalita avanzate del motore SQL.`;
 }
 
 function inferExample(keyword, category) {
   const k = keyword.toUpperCase();
 
-  if (k === "SELECT") return "SELECT id, name FROM customers WHERE segment = 'Enterprise';";
-  if (k === "WHERE") return "SELECT * FROM orders WHERE status IN ('PAID','SHIPPED');";
-  if (k === "ORDER BY") return "SELECT * FROM orders ORDER BY order_date DESC LIMIT 20;";
-  if (k === "LIMIT") return "SELECT * FROM orders ORDER BY total_amount DESC LIMIT 10;";
-  if (k === "JOIN") return "SELECT o.id, c.name FROM orders o JOIN customers c ON c.id = o.customer_id;";
-  if (k === "GROUP BY") return "SELECT segment, SUM(total_amount) FROM orders o JOIN customers c ON c.id = o.customer_id GROUP BY segment;";
-  if (k === "HAVING") return "SELECT segment, COUNT(*) n FROM customers GROUP BY segment HAVING n > 10;";
-  if (k === "WITH") return "WITH recent AS (SELECT * FROM orders WHERE order_date >= '2025-01-01') SELECT * FROM recent;";
-  if (k === "CONVERT") return "SELECT CONVERT('INTEGER', total_amount) FROM orders;";
-  if (k === "TRY_CONVERT") return "SELECT TRY_CONVERT('DATE', opened_at) FROM support_tickets;";
-  if (k === "INSERT") return "INSERT INTO customer_notes (customer_id, note_date, note_type, note_text, author_employee_id) VALUES (1, '2026-02-01', 'followup', 'Renewal requested', 2);";
-  if (k === "UPDATE") return "UPDATE products SET is_active = 0 WHERE stock = 0;";
-  if (k === "DELETE") return "DELETE FROM customer_notes WHERE note_type = 'obsolete';";
-  if (k === "EXPLAIN") return "EXPLAIN QUERY PLAN SELECT * FROM orders WHERE customer_id = 10;";
+  if (k === "SELECT") return "SELECT c.name, c.segment, c.credit_limit\nFROM customers c\nWHERE c.segment = 'Enterprise'\nORDER BY c.credit_limit DESC\nLIMIT 10;";
+  if (k === "FROM") return "SELECT o.id, o.order_date, o.total_amount\nFROM orders o\nWHERE o.status = 'PAID'\nLIMIT 15;";
+  if (k === "WHERE") return "SELECT id, name, status\nFROM orders\nWHERE status IN ('PAID','SHIPPED')\n  AND total_amount > 500;";
+  if (k === "ORDER BY" || k === "ORDER") return "SELECT id, name, total_amount\nFROM orders\nORDER BY total_amount DESC, order_date ASC\nLIMIT 20;";
+  if (k === "LIMIT") return "SELECT name, segment, credit_limit\nFROM customers\nORDER BY credit_limit DESC\nLIMIT 10;";
+  if (k === "OFFSET") return "SELECT name, segment\nFROM customers\nORDER BY name\nLIMIT 10 OFFSET 20;";
+  if (k === "DISTINCT") return "SELECT DISTINCT segment, country\nFROM customers\nORDER BY segment;";
+  if (k === "AS") return "SELECT c.name AS customer_name,\n       ROUND(SUM(o.total_amount), 2) AS lifetime_value\nFROM customers c\nJOIN orders o ON o.customer_id = c.id\nGROUP BY c.id;";
+  if (k === "AND") return "SELECT * FROM orders\nWHERE status = 'PAID'\n  AND total_amount > 1000\n  AND order_date >= '2025-01-01';";
+  if (k === "OR") return "SELECT * FROM customers\nWHERE segment = 'Enterprise'\n   OR credit_limit > 50000;";
+  if (k === "NOT") return "SELECT * FROM products\nWHERE NOT is_active\n  AND category NOT IN ('Obsolete','Discontinued');";
+  if (k === "JOIN") return "SELECT o.id, c.name, o.total_amount\nFROM orders o\nJOIN customers c ON c.id = o.customer_id\nWHERE o.status = 'PAID'\nLIMIT 20;";
+  if (k === "LEFT JOIN" || k === "LEFT") return "SELECT c.name, COUNT(o.id) AS n_orders\nFROM customers c\nLEFT JOIN orders o ON o.customer_id = c.id\nGROUP BY c.id;";
+  if (k === "GROUP BY" || k === "GROUP") return "SELECT c.segment,\n       COUNT(*) AS n_customers,\n       ROUND(AVG(c.credit_limit), 2) AS avg_credit\nFROM customers c\nGROUP BY c.segment;";
+  if (k === "HAVING") return "SELECT p.category, COUNT(*) AS n\nFROM products p\nGROUP BY p.category\nHAVING COUNT(*) >= 5;";
+  if (k === "WITH") return "WITH high_value AS (\n  SELECT customer_id, SUM(total_amount) AS spend\n  FROM orders GROUP BY customer_id\n  HAVING SUM(total_amount) > 50000\n)\nSELECT * FROM high_value;";
+  if (k === "CASE") return "SELECT name, total_amount,\n  CASE WHEN total_amount > 1000 THEN 'Alto'\n       WHEN total_amount > 200 THEN 'Medio'\n       ELSE 'Basso' END AS fascia\nFROM orders;";
+  if (k === "EXISTS") return "SELECT c.name FROM customers c\nWHERE EXISTS (\n  SELECT 1 FROM orders o\n  WHERE o.customer_id = c.id AND o.status = 'PAID'\n);";
+  if (k === "IN") return "SELECT id, name, status\nFROM orders\nWHERE status IN ('PAID', 'SHIPPED', 'REFUNDED');";
+  if (k === "BETWEEN") return "SELECT id, order_date, total_amount\nFROM orders\nWHERE order_date BETWEEN '2025-01-01' AND '2025-12-31';";
+  if (k === "LIKE") return "SELECT name, segment\nFROM customers\nWHERE name LIKE 'A%'\nORDER BY name;";
+  if (k === "UNION") return "SELECT 'Ordini' AS fonte, COUNT(*) AS n FROM orders\nUNION ALL\nSELECT 'Resi', COUNT(*) FROM returns;";
+  if (k === "CAST") return "SELECT name, CAST(total_amount AS INTEGER) AS importo_intero\nFROM orders LIMIT 10;";
+  if (k === "CONVERT") return "SELECT CONVERT('REAL', total_amount) AS importo_reale\nFROM orders LIMIT 10;";
+  if (k === "TRY_CONVERT") return "SELECT TRY_CONVERT('INTEGER', '123') AS ok,\n       TRY_CONVERT('INTEGER', 'abc') AS null_result;";
+  if (k === "COALESCE") return "SELECT c.name, COALESCE(SUM(o.total_amount), 0) AS totale\nFROM customers c\nLEFT JOIN orders o ON o.customer_id = c.id\nGROUP BY c.id;";
+  if (k === "NULLIF") return "SELECT total_amount / NULLIF(discount_amount, 0) AS ratio\nFROM orders WHERE discount_amount >= 0;";
+  if (k === "OVER") return "SELECT customer_id, total_amount,\n  SUM(total_amount) OVER (PARTITION BY customer_id ORDER BY order_date) AS running_total\nFROM orders;";
+  if (k === "ROW_NUMBER") return "SELECT *, ROW_NUMBER() OVER (\n  PARTITION BY customer_id ORDER BY total_amount DESC\n) AS rn FROM orders;";
+  if (k === "LAG") return "SELECT order_date, total_amount,\n  LAG(total_amount) OVER (ORDER BY order_date) AS prev_total\nFROM orders;";
+  if (k === "LEAD") return "SELECT order_date, total_amount,\n  LEAD(total_amount) OVER (ORDER BY order_date) AS next_total\nFROM orders;";
+  if (k === "INSERT") return "INSERT INTO customer_notes\n  (customer_id, note_date, note_type, note_text, author_employee_id)\nVALUES (1, '2026-02-01', 'followup', 'Renewal requested', 2);";
+  if (k === "UPDATE") return "UPDATE products\nSET price = ROUND(price * 1.05, 2)\nWHERE category = 'Software' AND stock > 0;";
+  if (k === "DELETE") return "DELETE FROM customer_notes\nWHERE note_type = 'obsolete'\n  AND note_date < '2024-01-01';";
+  if (k === "BEGIN") return "BEGIN;\nUPDATE products SET price = ROUND(price * 0.95, 2) WHERE category = 'Hardware';\nSELECT name, price FROM products WHERE category = 'Hardware' LIMIT 5;\nROLLBACK;";
+  if (k === "COMMIT") return "BEGIN;\nINSERT INTO customer_notes (customer_id, note_date, note_type, note_text, author_employee_id)\nVALUES (5, '2026-02-15', 'info', 'Account verified', 3);\nCOMMIT;";
+  if (k === "ROLLBACK") return "BEGIN;\nDELETE FROM customer_notes WHERE note_type = 'obsolete';\nSELECT COUNT(*) FROM customer_notes;\nROLLBACK;";
+  if (k === "CREATE TABLE") return "CREATE TABLE audit_log (\n  id INTEGER PRIMARY KEY,\n  entity TEXT NOT NULL,\n  event_type TEXT NOT NULL,\n  created_at TEXT NOT NULL DEFAULT (datetime('now'))\n);";
+  if (k === "ALTER TABLE") return "ALTER TABLE customers ADD COLUMN churn_risk REAL;";
+  if (k === "CREATE INDEX") return "CREATE INDEX idx_orders_customer_date\nON orders (customer_id, order_date);";
+  if (k === "EXPLAIN") return "EXPLAIN QUERY PLAN\nSELECT c.name, SUM(o.total_amount)\nFROM customers c\nJOIN orders o ON o.customer_id = c.id\nGROUP BY c.id;";
   if (category === "DDL") return `${k} TABLE demo (...);`;
   if (category === "DML") return `${k} ... ;`;
   if (category === "Transazioni") return `${k}; -- blocco transazionale`;
@@ -3314,109 +3376,263 @@ function inferPitfalls(keyword, category, syntax) {
   const k = keyword.toUpperCase();
   const ctx = getSyntaxContexts(k, syntax);
 
-  if (k === "SELECT" || k === "FROM") return [
+  if (k === "SELECT") return [
     "SELECT * su tabelle larghe aumenta I/O e accoppia il codice allo schema.",
-    "Alias mancanti in query con molte join riducono leggibilita e manutenzione.",
-    "Subquery non necessarie possono complicare il piano di esecuzione."
+    "Alias mancanti in query con molte espressioni calcolate riducono leggibilita.",
+    "In PostgreSQL e SQL Server, tutte le colonne non aggregate devono essere nel GROUP BY."
+  ];
+  if (k === "FROM") return [
+    "Subquery nel FROM senza alias causano errore di sintassi in tutti i dialetti.",
+    "Self-join senza alias distinti rendono ambigue le colonne referenziate.",
+    "Troppe subquery nel FROM complicano il piano di esecuzione."
   ];
 
   if (k === "WHERE") return [
     "Condizioni con OR e NULL possono filtrare in modo inatteso.",
     "Filtri su funzioni (es. DATE(col)) possono impedire uso indici.",
-    "Mischiare logica AND/OR senza parentesi produce risultati errati."
+    "Mischiare AND/OR senza parentesi produce risultati logici errati."
   ];
-  if (k === "AND" || k === "OR" || k === "NOT") return [
-    "Precedenza operatori non esplicita puo cambiare il risultato logico.",
-    "Negazioni su espressioni con NULL richiedono test puntuali."
+  if (k === "AND") return [
+    "Precedenza: AND ha precedenza su OR. Usare parentesi per chiarire la logica.",
+    "Condizioni con NULL: TRUE AND NULL = NULL, non FALSE."
+  ];
+  if (k === "OR") return [
+    "OR ha precedenza inferiore ad AND: A OR B AND C equivale a A OR (B AND C).",
+    "Catene di OR possono essere riscritte piu leggibilmente con IN (...)."
+  ];
+  if (k === "NOT") return [
+    "NOT IN con subquery contenente NULL restituisce sempre zero righe — usare NOT EXISTS.",
+    "Negazioni su espressioni con NULL richiedono test puntuali con IS NOT NULL."
   ];
 
   if (k === "ORDER BY" || k === "ORDER") return [
     "ORDER BY non univoco rende instabile la paginazione tra esecuzioni.",
-    "Ordinare su colonne non indicizzate puo essere costoso su volumi alti."
+    "Ordinare su colonne non indicizzate puo essere costoso su volumi alti.",
+    "NULLS FIRST/LAST non supportato in SQL Server: usare CASE WHEN col IS NULL."
   ];
-  if (k === "LIMIT" || k === "OFFSET") return [
+  if (k === "LIMIT") return [
     "LIMIT senza ORDER BY non garantisce ordine deterministico.",
-    "OFFSET elevati peggiorano le performance: valuta keyset pagination."
+    "OFFSET elevati peggiorano le performance: valuta keyset pagination.",
+    "SQL Server non supporta LIMIT: usare TOP o OFFSET/FETCH."
+  ];
+  if (k === "OFFSET") return [
+    "OFFSET elevati degradano le performance: il DB deve scorrere e scartare righe.",
+    "OFFSET senza ORDER BY produce risultati non deterministici.",
+    "In SQL Server, OFFSET richiede ORDER BY e usa la sintassi OFFSET n ROWS FETCH NEXT m ROWS ONLY."
   ];
 
-  if (k === "CAST" || k === "CONVERT" || k === "TRY_CONVERT") return [
-    "Conversioni invalide possono generare errori o NULL (dipende dal motore).",
-    "Cast in WHERE/JOIN puo degradare uso indici.",
-    "Formati data/numero variano tra dialetti SQL."
+  if (k === "CAST") return [
+    "Cast di valori non validi genera errore fatale — usare TRY_CAST in SQL Server.",
+    "CAST in WHERE/JOIN puo impedire l'uso di indici sulla colonna.",
+    "Tipi destinazione hanno nomi diversi tra dialetti (INT vs INTEGER, VARCHAR vs TEXT)."
+  ];
+  if (k === "CONVERT") return [
+    "CONVERT non e standard SQL: non portabile tra DBMS.",
+    "In SQL Server, lo stile numerico errato produce output inatteso su date.",
+    "PostgreSQL non ha CONVERT: usare CAST o operatore :: come equivalente."
+  ];
+  if (k === "TRY_CONVERT") return [
+    "TRY_CONVERT e esclusiva SQL Server: non esiste in PostgreSQL ne SQLite.",
+    "TRY_CONVERT ritorna NULL in silenzio: puo mascherare dati sporchi.",
+    "Nel lab SQLite e simulata: in produzione usare la versione nativa del DBMS."
   ];
 
-  if (k.includes("JOIN") || ["JOIN", "ON", "USING", "LEFT", "RIGHT", "INNER", "OUTER", "CROSS", "NATURAL", "FULL"].includes(k)) return [
-    "Join senza chiave corretta genera duplicazioni (effetto moltiplicazione).",
-    "LEFT JOIN con filtro nel WHERE puo diventare involontariamente INNER JOIN.",
-    "Tipi incompatibili nelle chiavi di join aumentano costi e mismatch."
+  if (k === "JOIN") return [
+    "Join senza indice sulla chiave di join causa full table scan costose.",
+    "Chiavi con tipi diversi (TEXT vs INTEGER) generano mismatch silenzioso.",
+    "JOIN senza ON restituisce un prodotto cartesiano (CROSS JOIN implicito)."
+  ];
+  if (k === "LEFT JOIN" || k === "LEFT") return [
+    "Filtro nel WHERE sulla tabella destra trasforma LEFT JOIN in INNER JOIN — spostare nella clausola ON.",
+    "LEFT JOIN con tabella destra molto grande senza indice puo essere lento.",
+    "Righe senza match hanno NULL in tutte le colonne della tabella destra."
+  ];
+  if (k === "RIGHT JOIN" || k === "RIGHT") return [
+    "SQLite non supporta RIGHT JOIN: invertire l'ordine delle tabelle e usare LEFT JOIN.",
+    "RIGHT JOIN e meno leggibile di LEFT JOIN invertito — molti team lo vietano per convention."
+  ];
+  if (k === "CROSS") return [
+    "CROSS JOIN genera N*M righe: puo esplodere con tabelle grandi.",
+    "Usare CROSS JOIN solo quando il prodotto cartesiano e intenzionale (es. combinazioni calendario)."
+  ];
+  if (k === "INNER") return [
+    "INNER JOIN esclude righe senza match: verificare che non si perdano dati necessari.",
+    "Se serve includere righe orfane, usare LEFT JOIN o FULL OUTER JOIN."
+  ];
+  if (k === "ON") return [
+    "Condizione ON errata (join su colonne sbagliate) genera duplicazioni inattese.",
+    "Tipi incompatibili nelle chiavi di join aumentano costi di conversione."
+  ];
+  if (k === "USING") return [
+    "USING richiede che le colonne abbiano esattamente lo stesso nome in entrambe le tabelle.",
+    "Con USING, la colonna di join appare una sola volta nel risultato (diverso da ON)."
   ];
 
-  if (k === "GROUP BY" || k === "GROUP" || k === "HAVING") return [
-    "Colonne non aggregate fuori dal GROUP BY causano errori o risultati ambigui.",
-    "Granularita errata del group altera i KPI.",
-    "Filtri messi in HAVING invece che in WHERE aumentano lavoro inutile."
+  if (k === "GROUP BY" || k === "GROUP") return [
+    "Colonne non aggregate fuori dal GROUP BY causano errore in PostgreSQL e SQL Server.",
+    "Granularita GROUP BY errata altera i KPI risultanti.",
+    "GROUP BY su espressioni calcolate puo impedire l'uso di indici."
+  ];
+  if (k === "HAVING") return [
+    "Filtri non aggregati in HAVING sono uno spreco: WHERE e piu efficiente (filtra prima).",
+    "Alias nel HAVING funzionano in SQLite ma non in PostgreSQL e SQL Server.",
+    "HAVING senza GROUP BY tratta l'intero result set come un singolo gruppo."
   ];
 
-  if (k === "WITH" || k === "RECURSIVE") return [
-    "CTE usate senza criterio possono peggiorare leggibilita e performance.",
-    "Ricorsioni senza condizione di stop adeguata rischiano loop o set eccessivi."
+  if (k === "WITH") return [
+    "CTE non materializzate possono essere rieseguite piu volte dal query planner.",
+    "Troppe CTE concatenate rendono la query difficile da debuggare.",
+    "PostgreSQL pre-v12 materializza sempre le CTE: puo essere inefficiente per CTE piccole."
+  ];
+  if (k === "RECURSIVE") return [
+    "CTE ricorsive senza condizione di stop adeguata causano loop infiniti o set enormi.",
+    "Il numero massimo di iterazioni varia per DBMS: SQLite default 1000, PostgreSQL nessun limite hardcoded."
   ];
 
-  if (k === "CASE" || k === "WHEN" || k === "THEN" || k === "ELSE" || k === "END") return [
-    "Rami CASE con tipi incompatibili possono forzare cast indesiderati.",
-    "Mancare ELSE puo produrre NULL inattesi in output."
+  if (k === "CASE") return [
+    "Omettere ELSE produce NULL implicito — puo causare errori a valle.",
+    "Rami WHEN con tipi incompatibili forzano cast impliciti non portabili.",
+    "CASE valuta i WHEN in ordine: il primo TRUE vince, gli altri sono saltati."
+  ];
+  if (k === "WHEN") return [
+    "WHEN viene valutato in ordine sequenziale nel CASE — ordine dei rami conta.",
+    "Condizioni WHEN troppo generiche catturano righe non volute se poste prima."
+  ];
+  if (k === "THEN") return [
+    "Tipo del THEN deve essere compatibile con ELSE e altri THEN nello stesso CASE.",
+    "In PostgreSQL tipi incompatibili tra THEN/ELSE causano errore di compilazione."
+  ];
+  if (k === "ELSE") return [
+    "ELSE omesso causa NULL implicito che si propaga nelle espressioni successive.",
+    "Aggiungere sempre ELSE esplicito per documentare il caso di fallback."
   ];
 
-  if (k === "EXISTS" || k === "IN") return [
-    "IN con sottoquery contenente NULL puo dare esiti inattesi con NOT IN.",
-    "Subquery non ottimizzate possono essere molto costose su grandi volumi."
+  if (k === "EXISTS") return [
+    "NOT EXISTS funziona correttamente con NULL (a differenza di NOT IN).",
+    "Subquery non correlata in EXISTS e sempre TRUE se ha almeno una riga — quasi mai voluto."
+  ];
+  if (k === "IN") return [
+    "NOT IN con subquery contenente NULL restituisce sempre zero righe — usare NOT EXISTS.",
+    "Liste IN molto lunghe possono rallentare il parsing.",
+    "Per grandi volumi, preferire EXISTS o JOIN come alternativa a IN con subquery."
   ];
   if (k === "BETWEEN") return [
     "BETWEEN e inclusivo su entrambi gli estremi: attenzione su date/timestamp.",
+    "BETWEEN su DATETIME include le 00:00:00 del giorno finale: per escluderlo usare < giorno+1.",
     "Intervalli su testo dipendono da collation e ordinamento lessicografico."
   ];
   if (k === "LIKE") return [
-    "Pattern con wildcard iniziale (%abc) inibiscono spesso uso indici.",
-    "Case sensitivity e caratteri speciali dipendono da collation/dialetto."
+    "Pattern con wildcard iniziale (%abc) inibisce l'uso di indici.",
+    "Case sensitivity: SQLite LIKE e case-insensitive su ASCII, PostgreSQL e case-sensitive.",
+    "Caratteri speciali (%, _) nel pattern richiedono ESCAPE per match letterale."
   ];
 
-  if (k === "UNION" || k === "INTERSECT" || k === "EXCEPT") return [
-    "Le SELECT devono avere stesso numero e tipo compatibile di colonne.",
-    "UNION deduplica e puo costare molto: usa UNION ALL quando possibile."
+  if (k === "UNION") return [
+    "UNION deduplica e puo costare molto: usa UNION ALL quando possibile.",
+    "Le SELECT unite devono avere stesso numero e tipo compatibile di colonne.",
+    "ORDER BY si applica all'intero UNION, non alla singola SELECT componente."
+  ];
+  if (k === "INTERSECT") return [
+    "Le SELECT devono avere stesso numero e tipo di colonne.",
+    "INTERSECT elimina duplicati: per mantenerli usare INTERSECT ALL (non supportato in tutti i DBMS)."
+  ];
+  if (k === "EXCEPT") return [
+    "EXCEPT elimina duplicati: per mantenerli usare EXCEPT ALL (non supportato in SQL Server).",
+    "L'ordine delle SELECT conta: A EXCEPT B e diverso da B EXCEPT A."
   ];
 
-  if (k === "OVER" || k === "PARTITION" || k === "ROWS" || k === "RANGE" || ctx.hasWindow) return [
-    "ORDER BY incompleto nella finestra produce risultati non deterministici.",
-    "Frame implicito puo cambiare comportamento tra DBMS.",
-    "Mescolare frame ROWS e RANGE senza attenzione altera il risultato analitico."
+  if (k === "COALESCE") return [
+    "COALESCE valuta tutti gli argomenti: subquery costose vengono eseguite anche se non necessarie.",
+    "Tipi degli argomenti devono essere compatibili: mescolare INTEGER e TEXT puo causare errori."
+  ];
+  if (k === "NULLIF") return [
+    "NULLIF(a, b) confronta solo uguaglianza: il risultato NULL si propaga nelle espressioni successive.",
+    "SUM/AVG ignorano NULL: dividere per NULLIF(COUNT(...), 0) e piu sicuro."
   ];
 
-  if (k === "INSERT" || k === "INTO" || k === "VALUES") return [
-    "Ordine valori non allineato alle colonne causa dati errati.",
-    "Assenza di validazioni puo introdurre duplicati o violazioni di vincoli."
+  if (k === "OVER") return [
+    "OVER() senza ORDER BY rende il frame non deterministico per alcune funzioni.",
+    "Frame di default con ORDER BY e RANGE (non ROWS): puo dare risultati inattesi con duplicati.",
+    "Frame diversi (ROWS vs RANGE) producono risultati diversi con valori duplicati nell'ORDER BY."
   ];
-  if (k === "UPDATE" || k === "SET" || k === "DELETE") return [
-    "Dimenticare WHERE in UPDATE/DELETE impatta tutte le righe.",
-    "Aggiornamenti massivi senza transazione rendono difficile il rollback."
+  if (k === "PARTITION") return [
+    "PARTITION BY con troppi valori unici crea partizioni da una sola riga — simile a nessuna partizione.",
+    "Senza PARTITION BY, la finestra comprende tutte le righe del result set."
+  ];
+  if (k === "ROWS" || k === "RANGE" || k === "GROUPS") return [
+    "ROWS conta righe fisiche; RANGE raggruppa per valore — risultati diversi con duplicati.",
+    "GROUPS conta gruppi di valori uguali — supportato in SQLite e PostgreSQL, non in SQL Server.",
+    "Frame implicito senza specifica puo variare tra DBMS."
   ];
 
-  if (k === "BEGIN" || k === "COMMIT" || k === "ROLLBACK" || k === "SAVEPOINT") return [
-    "Transaction scope troppo ampio aumenta lock e contention.",
-    "Gestione errori incompleta puo lasciare transazioni aperte."
+  if (k === "INSERT" || k === "INTO") return [
+    "Ordine valori deve corrispondere esattamente all'ordine delle colonne specificate.",
+    "INSERT senza lista colonne esplicita rompe se la tabella cambia schema.",
+    "Violazioni di vincoli (PK duplicata, FK inesistente) causano errore e rollback della riga."
+  ];
+  if (k === "VALUES") return [
+    "Ordine dei valori deve essere allineato alle colonne dichiarate.",
+    "Inserire tipi errati puo causare conversioni implicite non portabili."
+  ];
+  if (k === "UPDATE" || k === "SET") return [
+    "UPDATE senza WHERE aggiorna TUTTE le righe — verificare sempre con SELECT prima.",
+    "Aggiornamenti massivi senza transazione rendono impossibile il rollback.",
+    "UPDATE su colonne indicizzate richiede aggiornamento degli indici: impatto performance."
+  ];
+  if (k === "DELETE") return [
+    "DELETE senza WHERE cancella TUTTE le righe — controllare sempre la condizione.",
+    "DELETE con FK senza CASCADE fallisce se ci sono righe referenziate.",
+    "Su tabelle grandi, DELETE massivo genera molto WAL/log: considerare batch con LIMIT."
   ];
 
-  if (k === "CREATE" || k === "ALTER" || k === "DROP" || k === "TABLE" || k === "INDEX" || k === "CREATE TABLE" || k === "ALTER TABLE" || k === "CREATE INDEX") return [
-    "Modifiche DDL in produzione possono bloccare workload concorrenti.",
-    "Evoluzioni schema senza piano di migrazione possono rompere query esistenti."
+  if (k === "BEGIN") return [
+    "Transazione aperta senza COMMIT/ROLLBACK tiene lock attivi e blocca altri processi.",
+    "In SQLite solo una transazione write alla volta e permessa (serialized).",
+    "SQL Server richiede BEGIN TRANSACTION (non solo BEGIN)."
+  ];
+  if (k === "COMMIT") return [
+    "Dopo COMMIT i dati sono permanenti: non e possibile fare rollback.",
+    "COMMIT senza BEGIN e un no-op in autocommit mode.",
+    "In SQL Server con nesting, solo il COMMIT piu esterno persiste i dati."
+  ];
+  if (k === "ROLLBACK") return [
+    "ROLLBACK senza BEGIN non ha effetto in autocommit mode.",
+    "ROLLBACK TO SAVEPOINT non chiude la transazione — serve COMMIT o ROLLBACK finale.",
+    "In PostgreSQL una transazione in stato di errore richiede ROLLBACK prima di nuovi comandi."
+  ];
+  if (k === "SAVEPOINT") return [
+    "Troppi savepoint possono complicare la logica transazionale.",
+    "ROLLBACK TO SAVEPOINT mantiene la transazione aperta: servira COMMIT o ROLLBACK."
+  ];
+
+  if (k === "CREATE" || k === "CREATE TABLE") return [
+    "CREATE TABLE senza IF NOT EXISTS fallisce se la tabella esiste gia.",
+    "Tipi dati hanno nomi diversi tra dialetti (TEXT vs VARCHAR vs NVARCHAR).",
+    "Foreign key in SQLite richiedono PRAGMA foreign_keys = ON per essere enforced."
+  ];
+  if (k === "ALTER" || k === "ALTER TABLE") return [
+    "SQLite ha ALTER TABLE limitato: no DROP COLUMN (pre 3.35.0), no ALTER COLUMN type.",
+    "ALTER TABLE su tabelle grandi puo richiedere lock esclusivo.",
+    "Rinominare colonne in SQL Server richiede sp_rename, non ALTER TABLE RENAME COLUMN."
+  ];
+  if (k === "DROP") return [
+    "DROP e irreversibile senza backup o transazione: i dati vengono persi.",
+    "DROP TABLE con CASCADE elimina anche viste e vincoli dipendenti."
+  ];
+  if (k === "INDEX" || k === "CREATE INDEX") return [
+    "Troppi indici rallentano INSERT/UPDATE/DELETE.",
+    "Indici su colonne con bassa cardinalita (es. boolean) sono poco efficaci.",
+    "CREATE INDEX senza CONCURRENTLY (PostgreSQL) blocca la tabella."
   ];
 
   if (k === "EXPLAIN" || k === "PLAN") return [
-    "Il piano stimato puo differire da runtime reale senza ANALYZE/statistiche aggiornate.",
-    "Ottimizzare solo su dataset piccolo porta decisioni fuorvianti."
+    "Il piano stimato puo differire dal runtime reale: usare EXPLAIN ANALYZE per dati effettivi.",
+    "Ottimizzare solo su dataset piccolo porta conclusioni fuorvianti.",
+    "Costi nel piano sono relativi al DBMS e non confrontabili tra motori diversi."
   ];
 
   if (ctx.hasWhere) return [
-    "Condizioni complesse senza indice adeguato degradano drasticamente le performance.",
+    "Condizioni complesse senza indice adeguato degradano le performance.",
     "Logica booleana non testata su casi limite produce filtri sbagliati."
   ];
   if (ctx.hasJoin) return [
@@ -3431,10 +3647,6 @@ function inferPitfalls(keyword, category, syntax) {
     "Oggetti creati senza naming convention rendono difficile manutenzione.",
     "Assenza di rollback plan aumenta rischio durante migrazioni."
   ];
-  if (ctx.hasExplain) return [
-    "Leggere solo il costo totale senza dettaglio operazioni puo trarre in inganno.",
-    "Piani diversi tra ambienti richiedono confronto di statistiche e indici."
-  ];
   if (category === "DML") return [
     "Dimenticare WHERE in UPDATE/DELETE impatta tutte le righe.",
     "Assenza di transazione aumenta rischio di stato parziale."
@@ -3447,21 +3659,133 @@ function inferPitfalls(keyword, category, syntax) {
 
 function inferDialectNote(keyword) {
   const k = keyword.toUpperCase();
+  if (k === "SELECT") {
+    if (state.dialect === "sqlserver") return "SQL Server usa TOP n al posto di LIMIT. Richiede tutte le colonne non aggregate nel GROUP BY.";
+    if (state.dialect === "postgresql") return "PostgreSQL richiede tutte le colonne non aggregate nel GROUP BY. Supporta DISTINCT ON.";
+    return "SQLite e permissivo su GROUP BY: colonne non aggregate non generano errore ma il risultato e arbitrario.";
+  }
+  if (k === "LIMIT") {
+    if (state.dialect === "sqlserver") return "SQL Server non supporta LIMIT: usare SELECT TOP n o OFFSET/FETCH.";
+    if (state.dialect === "postgresql") return "PostgreSQL supporta LIMIT e anche la forma standard FETCH FIRST n ROWS ONLY.";
+    return "SQLite supporta LIMIT n OFFSET m. Anche la forma legacy LIMIT m, n.";
+  }
   if (k === "CONVERT") {
-    if (state.dialect === "sqlserver") return "Modalita SQL Server: CONVERT(tipo, espressione [, stile]).";
-    if (state.dialect === "postgresql") return "Modalita PostgreSQL: usa CAST(...) o operatore :: al posto di CONVERT.";
-    return "Modalita SQLite: CONVERT(tipo, espressione) e fornita come funzione custom nel playground.";
+    if (state.dialect === "sqlserver") return "SQL Server: CONVERT(tipo, espressione [, stile]) con parametro stile per formattazione date.";
+    if (state.dialect === "postgresql") return "PostgreSQL non ha CONVERT: usa CAST(...) o operatore :: . Per date usa to_char().";
+    return "SQLite: CONVERT non e nativo. Nel lab e implementata come funzione custom CONVERT(tipo, valore).";
   }
   if (k === "TRY_CONVERT") {
-    if (state.dialect === "sqlserver") return "TRY_CONVERT e nativa e ritorna NULL se conversione fallisce.";
-    if (state.dialect === "postgresql") return "TRY_CONVERT non e nativa in PostgreSQL; equivalente con CASE/NULLIF + CAST.";
-    return "TRY_CONVERT nel lab SQLite e simulata e ritorna NULL su conversione non valida.";
+    if (state.dialect === "sqlserver") return "SQL Server: TRY_CONVERT e nativa. Ritorna NULL se conversione fallisce.";
+    if (state.dialect === "postgresql") return "PostgreSQL: TRY_CONVERT non esiste. Equivalente con CASE + CAST o funzione custom.";
+    return "SQLite: TRY_CONVERT nel lab e simulata via funzione custom. Ritorna NULL su conversione invalida.";
   }
-  if (["RIGHT JOIN", "FULL JOIN", "MERGE", "TRUNCATE", "GRANT", "REVOKE"].includes(k)) {
-    return "Supporto variabile: verifica sempre il dialetto target (SQLite/MySQL/PostgreSQL/SQL Server).";
+  if (k === "JOIN") {
+    if (state.dialect === "sqlserver") return "SQL Server supporta INNER, LEFT, RIGHT, FULL OUTER, CROSS JOIN e CROSS/OUTER APPLY.";
+    if (state.dialect === "postgresql") return "PostgreSQL supporta tutti i tipi di JOIN incluso FULL OUTER e LATERAL.";
+    return "SQLite supporta INNER, LEFT, CROSS e NATURAL JOIN. Non supporta RIGHT JOIN ne FULL OUTER JOIN.";
   }
-  if (k === "WINDOW" || k === "OVER") {
-    return "Window functions hanno piccole differenze di sintassi e frame defaults tra DBMS.";
+  if (k === "LEFT JOIN" || k === "LEFT") {
+    if (state.dialect === "sqlserver") return "SQL Server supporta LEFT JOIN. La vecchia sintassi *= e deprecata.";
+    if (state.dialect === "postgresql") return "PostgreSQL supporta LEFT JOIN e LEFT OUTER JOIN (sinonimi).";
+    return "SQLite supporta LEFT JOIN. Non supporta RIGHT JOIN: invertire l'ordine delle tabelle.";
+  }
+  if (["RIGHT JOIN", "RIGHT"].includes(k)) {
+    if (state.dialect === "sqlserver") return "SQL Server supporta RIGHT JOIN nativamente.";
+    if (state.dialect === "postgresql") return "PostgreSQL supporta RIGHT JOIN nativamente.";
+    return "SQLite non supporta RIGHT JOIN: invertire l'ordine delle tabelle e usare LEFT JOIN.";
+  }
+  if (["FULL JOIN", "FULL"].includes(k)) {
+    if (state.dialect === "sqlserver") return "SQL Server supporta FULL OUTER JOIN nativamente.";
+    if (state.dialect === "postgresql") return "PostgreSQL supporta FULL OUTER JOIN nativamente.";
+    return "SQLite non supporta FULL OUTER JOIN. Workaround: LEFT JOIN UNION ALL + anti-join.";
+  }
+  if (k === "GROUP BY" || k === "GROUP" || k === "HAVING") {
+    if (state.dialect === "sqlserver") return "SQL Server richiede tutte le colonne non aggregate nel GROUP BY. Supporta GROUPING SETS, CUBE, ROLLUP.";
+    if (state.dialect === "postgresql") return "PostgreSQL richiede rigidamente colonne non aggregate nel GROUP BY. Supporta GROUPING SETS, CUBE, ROLLUP.";
+    return "SQLite e permissivo: colonne fuori GROUP BY non danno errore ma restituiscono valori arbitrari.";
+  }
+  if (k === "WITH" || k === "RECURSIVE") {
+    if (state.dialect === "sqlserver") return "SQL Server: CTE non materializzate (inline come subquery). Usare tabelle temporanee per materializzare.";
+    if (state.dialect === "postgresql") return "PostgreSQL: dalla v12+ il planner puo fare inline delle CTE. Usare MATERIALIZED/NOT MATERIALIZED per controllare.";
+    return "SQLite supporta CTE e CTE ricorsive. Non materializza le CTE (rieseguite come subquery).";
+  }
+  if (k === "OVER" || k === "WINDOW") {
+    if (state.dialect === "sqlserver") return "SQL Server supporta ROWS e RANGE frame. Non supporta GROUPS ne named windows (pre-2022).";
+    if (state.dialect === "postgresql") return "PostgreSQL supporta sintassi completa: ROWS, RANGE, GROUPS, EXCLUDE e named windows (WINDOW w AS ...).";
+    return "SQLite supporta window functions dalla 3.25.0. Supporta ROWS, RANGE e GROUPS frame.";
+  }
+  if (k === "ROW_NUMBER" || k === "RANK" || k === "DENSE_RANK") {
+    return `${k} e supportato in SQLite (3.25+), PostgreSQL e SQL Server con la stessa sintassi OVER(...).`;
+  }
+  if (k === "LAG" || k === "LEAD") {
+    if (state.dialect === "postgresql") return "PostgreSQL supporta LAG/LEAD con IGNORE NULLS dalla v16+.";
+    if (state.dialect === "sqlserver") return "SQL Server supporta LAG/LEAD ma non IGNORE NULLS. Workaround con OUTER APPLY.";
+    return "SQLite supporta LAG/LEAD dalla 3.25.0. IGNORE NULLS non supportato.";
+  }
+  if (k === "INSERT") {
+    if (state.dialect === "sqlserver") return "SQL Server: usare OUTPUT INSERTED.* per restituire righe inserite. MERGE per upsert.";
+    if (state.dialect === "postgresql") return "PostgreSQL: INSERT ... ON CONFLICT DO UPDATE per upsert. RETURNING per ottenere valori inseriti.";
+    return "SQLite: INSERT OR REPLACE e INSERT OR IGNORE per gestire conflitti. RETURNING dalla 3.35.0.";
+  }
+  if (k === "UPDATE") {
+    if (state.dialect === "sqlserver") return "SQL Server: UPDATE con FROM e JOIN. OUTPUT per restituire righe modificate.";
+    if (state.dialect === "postgresql") return "PostgreSQL: UPDATE ... FROM per join nell'update. RETURNING per ottenere righe aggiornate.";
+    return "SQLite: UPDATE con FROM clause dalla 3.33.0. RETURNING dalla 3.35.0.";
+  }
+  if (k === "DELETE") {
+    if (state.dialect === "sqlserver") return "SQL Server: DELETE con FROM e JOIN. TRUNCATE TABLE per svuotare completamente.";
+    if (state.dialect === "postgresql") return "PostgreSQL: DELETE ... USING per join nel delete. RETURNING per ottenere righe cancellate.";
+    return "SQLite: DELETE con LIMIT (non standard). VACUUM per recuperare spazio dopo delete massivi.";
+  }
+  if (k === "BEGIN") {
+    if (state.dialect === "sqlserver") return "SQL Server: BEGIN TRANSACTION (o BEGIN TRAN). Supporta nesting con @@TRANCOUNT.";
+    if (state.dialect === "postgresql") return "PostgreSQL: BEGIN o START TRANSACTION. Isolation level configurabile per transazione.";
+    return "SQLite: BEGIN (o BEGIN DEFERRED | IMMEDIATE | EXCLUSIVE) per controllare il livello di lock.";
+  }
+  if (k === "COMMIT") {
+    if (state.dialect === "sqlserver") return "SQL Server: COMMIT TRANSACTION. Con nesting, solo il COMMIT piu esterno persiste i dati.";
+    if (state.dialect === "postgresql") return "PostgreSQL: COMMIT. Se la transazione e in stato di errore, COMMIT equivale a ROLLBACK.";
+    return "SQLite: COMMIT e sinonimo di END TRANSACTION. In autocommit, ogni statement e auto-committed.";
+  }
+  if (k === "ROLLBACK") {
+    if (state.dialect === "sqlserver") return "SQL Server: ROLLBACK TRANSACTION annulla tutto. ROLLBACK TRAN TO per savepoint.";
+    if (state.dialect === "postgresql") return "PostgreSQL: ROLLBACK e ROLLBACK TO SAVEPOINT. Transazione in errore richiede ROLLBACK.";
+    return "SQLite: ROLLBACK e ROLLBACK TO nome_savepoint. Transazioni serializzate: una write alla volta.";
+  }
+  if (k === "SAVEPOINT") {
+    if (state.dialect === "sqlserver") return "SQL Server: SAVE TRANSACTION nome_punto.";
+    if (state.dialect === "postgresql") return "PostgreSQL: SAVEPOINT nome_punto. Supporta rollback parziale.";
+    return "SQLite: SAVEPOINT nome_punto. RELEASE SAVEPOINT per rimuoverlo.";
+  }
+  if (k === "CREATE TABLE") {
+    if (state.dialect === "sqlserver") return "SQL Server: IDENTITY(1,1) per auto-increment. Tipi: INT, BIGINT, NVARCHAR(n), DATETIME2.";
+    if (state.dialect === "postgresql") return "PostgreSQL: SERIAL/BIGSERIAL o GENERATED ALWAYS AS IDENTITY. Tipi rigorosi, JSONB nativo.";
+    return "SQLite: tipi sono suggerimenti (affinity). INTEGER PRIMARY KEY diventa ROWID automatico.";
+  }
+  if (k === "ALTER TABLE") {
+    if (state.dialect === "sqlserver") return "SQL Server: ADD/ALTER/DROP COLUMN. Rinominare richiede sp_rename.";
+    if (state.dialect === "postgresql") return "PostgreSQL: ADD/DROP/ALTER COLUMN, ADD/DROP CONSTRAINT. Molte operazioni non-blocking.";
+    return "SQLite: ADD COLUMN e RENAME COLUMN supportati. DROP COLUMN dalla 3.35.0. No ALTER COLUMN type.";
+  }
+  if (k === "EXPLAIN" || k === "PLAN") {
+    if (state.dialect === "sqlserver") return "SQL Server: SET SHOWPLAN_TEXT ON o Actual Execution Plan in SSMS.";
+    if (state.dialect === "postgresql") return "PostgreSQL: EXPLAIN mostra piano stimato. EXPLAIN ANALYZE per tempi reali e I/O effettivo.";
+    return "SQLite: EXPLAIN QUERY PLAN per strategia (SCAN/SEARCH/USE INDEX). EXPLAIN per bytecode opcodes.";
+  }
+  if (k === "MERGE") {
+    if (state.dialect === "sqlserver") return "SQL Server supporta MERGE nativamente per upsert complessi.";
+    if (state.dialect === "postgresql") return "PostgreSQL supporta MERGE dalla versione 15. In alternativa INSERT ... ON CONFLICT.";
+    return "SQLite non supporta MERGE. Usare INSERT OR REPLACE o INSERT ... ON CONFLICT.";
+  }
+  if (k === "TRUNCATE") {
+    if (state.dialect === "sqlserver") return "SQL Server: TRUNCATE TABLE e piu veloce di DELETE (non logga singole righe).";
+    if (state.dialect === "postgresql") return "PostgreSQL: TRUNCATE TABLE. Supporta CASCADE per tabelle con FK referenziate.";
+    return "SQLite non supporta TRUNCATE TABLE. Usare DELETE FROM tabella senza WHERE.";
+  }
+  if (["GRANT", "REVOKE"].includes(k)) {
+    if (state.dialect === "sqlserver") return "SQL Server supporta GRANT/REVOKE con granularita a livello di schema, tabella e colonna.";
+    if (state.dialect === "postgresql") return "PostgreSQL supporta GRANT/REVOKE completi con sistema di ruoli avanzato.";
+    return "SQLite non supporta GRANT/REVOKE: la sicurezza e gestita a livello di file system.";
   }
   return `Modalita attiva: ${DIALECTS[state.dialect] || DIALECTS.sqlite}. Verifica differenze sintattiche sul DBMS target.`;
 }

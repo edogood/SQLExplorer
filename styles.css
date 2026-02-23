@@ -890,7 +890,7 @@ summary:focus-visible {
 .keyword-toolbar {
   margin-top: 1rem;
   display: grid;
-  grid-template-columns: minmax(240px, 2fr) minmax(180px, 1fr) auto;
+  grid-template-columns: minmax(200px, 2fr) minmax(140px, 1fr) minmax(140px, 1fr) auto;
   gap: 0.65rem;
   align-items: center;
 }
@@ -984,6 +984,33 @@ summary:focus-visible {
   padding: 0.46rem 0.52rem;
   font-size: 0.78rem;
   color: #2f4a47;
+}
+
+.kw-snippet-block {
+  display: grid;
+  gap: 0.3rem;
+}
+
+.kw-snippet-label {
+  font-size: 0.72rem;
+  font-weight: 700;
+  text-transform: uppercase;
+  letter-spacing: 0.06em;
+  color: #355451;
+}
+
+.btn-sm {
+  font-size: 0.72rem;
+  padding: 0.24rem 0.56rem;
+}
+
+.keyword-card .keyword-head h3 a {
+  color: inherit;
+  text-decoration: none;
+}
+
+.keyword-card .keyword-head h3 a:hover {
+  text-decoration: underline;
 }
 
 .site-footer {
