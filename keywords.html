@@ -4,13 +4,52 @@
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
   <title>Keyword Explorer | SQL Lab</title>
+  <meta name="description" content="Catalogo completo keyword SQL con definizioni specifiche, esempi reali e note per dialetto.">
   <link rel="preconnect" href="https://fonts.googleapis.com">
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
   <link href="https://fonts.googleapis.com/css2?family=Sora:wght@400;600;700;800&family=IBM+Plex+Mono:wght@400;500&display=swap" rel="stylesheet">
   <link rel="stylesheet" href="styles.css">
+  <script defer src="keywords-page.js"></script>
 </head>
 <body>
-<header class="site-header"><div class="header-inner"><a href="index.html" class="brand">SQL Lab Completo</a><nav class="top-nav"><a href="playground.html">Playground</a><a href="guided.html">Percorso</a><a href="trainer.html">Trainer</a><a href="syntax.html">Sintassi</a><a href="keywords.html">Keyword</a></nav></div></header>
-<main class="page"><section class="panel"><div class="panel-head"><h2>Keyword Explorer</h2><p>Reference keyword separata dalla home per ridurre overload visivo.</p></div><p class="hero-copy">Usa la vista keyword nel lab completo o consulta la sintassi avanzata.</p><div class="landing-reference-grid"><a class="landing-ref-card" href="playground.html#keywords"><h3>Apri Keyword nel Lab</h3></a><a class="landing-ref-card" href="syntax.html"><h3>Vai alla Sintassi</h3></a></div></section></main>
+  <div class="bg-shape bg-shape-one" aria-hidden="true"></div>
+  <div class="bg-shape bg-shape-two" aria-hidden="true"></div>
+
+  <header class="site-header">
+    <div class="header-inner">
+      <a href="index.html" class="brand">SQL Lab Completo</a>
+      <nav class="top-nav">
+        <a href="playground.html">Playground</a>
+        <a href="guided.html">Percorso</a>
+        <a href="trainer.html">Trainer</a>
+        <a href="syntax.html">Sintassi</a>
+        <a href="keywords.html">Keyword</a>
+      </nav>
+    </div>
+  </header>
+
+  <main class="page">
+    <section class="panel">
+      <div class="panel-head">
+        <h2>SQL Keyword Explorer</h2>
+        <p>Catalogo completo con definizioni specifiche per keyword, snippet reali, casi d'uso e note di compatibilita tra SQLite, PostgreSQL e SQL Server.</p>
+      </div>
+
+      <div class="keyword-toolbar">
+        <input id="kwSearch" type="text" placeholder="Cerca keyword, descrizione o esempio...">
+        <select id="kwCategory"></select>
+        <select id="kwDialect">
+          <option value="all">Tutti i dialetti</option>
+          <option value="sqlite">SQLite</option>
+          <option value="postgresql">PostgreSQL</option>
+          <option value="sqlserver">SQL Server</option>
+        </select>
+        <span id="kwCount" class="keyword-count">0 keyword</span>
+      </div>
+      <p id="kwLive" class="sr-only" aria-live="polite"></p>
+
+      <div id="kwList" class="keyword-list"></div>
+    </section>
+  </main>
 </body>
 </html>
