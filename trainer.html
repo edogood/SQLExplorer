@@ -8,9 +8,37 @@
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
   <link href="https://fonts.googleapis.com/css2?family=Sora:wght@400;600;700;800&family=IBM+Plex+Mono:wght@400;500&display=swap" rel="stylesheet">
   <link rel="stylesheet" href="styles.css">
+  <script type="module" src="./src/pages/trainer.js"></script>
 </head>
 <body>
-<header class="site-header"><div class="header-inner"><a href="index.html" class="brand">SQL Lab Completo</a><nav class="top-nav"><a href="playground.html">Playground</a><a href="database.html">Database</a><a href="exercises.html">Exercises</a><a href="guided.html">Percorso</a><a href="trainer.html">Trainer</a><a href="keyword.html">Keyword</a><a href="syntax.html">Sintassi</a><a href="keywords.html">Keyword Explorer</a></nav></div></header>
-<main class="page"><section class="panel"><div class="panel-head"><h2>Keyword Trainer</h2><p>Pagina dedicata al trainer per un'esperienza più focalizzata.</p></div><p class="hero-copy">Accedi al trainer con check sintassi + output direttamente nel lab.</p><a class="btn btn-primary" href="playground.html#trainer">Apri Trainer nel Lab</a></section></main>
+  <div class="bg-shape bg-shape-one" aria-hidden="true"></div>
+  <div class="bg-shape bg-shape-two" aria-hidden="true"></div>
+
+  <header class="site-header">
+    <div class="header-inner">
+      <a href="index.html" class="brand">SQL Lab Completo</a>
+      <nav class="top-nav">
+        <a href="playground.html">Playground</a>
+        <a href="database.html">Database</a>
+        <a href="exercises.html">Exercises</a>
+        <a href="guided.html">Percorso</a>
+        <a href="trainer.html">Trainer</a>
+        <a href="keyword.html">Keyword</a>
+        <a href="syntax.html">Sintassi</a>
+        <a href="keywords.html">Keyword Explorer</a>
+      </nav>
+    </div>
+  </header>
+
+  <main class="page">
+    <section class="panel">
+      <div class="panel-head">
+        <h2>Keyword Trainer</h2>
+        <p>Allenamento mirato: ogni challenge si apre nel Playground per l'esecuzione SQL.</p>
+        <span id="trainerCount" class="keyword-count"></span>
+      </div>
+      <div id="trainerPageList" class="keyword-list"></div>
+    </section>
+  </main>
 </body>
 </html>
