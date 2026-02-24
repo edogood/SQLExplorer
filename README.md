@@ -1,46 +1,97 @@
-# SQLExplorer / SQL Lab Completo
+# SQLExplorer (Level-2 Dynamic SQL Lab)
 
-## Cosa è cambiato
-- **Nuova Information Architecture (multi-page)**:
-  - `index.html` ora è una landing snella con CTA per Playground, Percorso, Trainer e blocco Reference.
-  - nuove pagine dedicate: `playground.html`, `guided.html`, `trainer.html`, `keywords.html`.
-- **Deep-link operativo Syntax -> Playground**:
-  - in `syntax.html` ogni topic ha azioni `Copia snippet` e `Apri nel Playground`.
-  - `Apri nel Playground` usa querystring (`dialect`, `q`, `autorun=1`) per prefill + esecuzione automatica.
-  - topic con permalink (`#slug`) per condivisione/anchor diretto.
-- **TODO UX migliorata (Guided/Trainer)**:
-  - placeholder standardizzati su `/* TODO: ... */`.
-  - blocco verifica con conteggio TODO trovati.
-  - pulsante `Prossimo TODO` per salto/selezione della prossima occorrenza nel query editor.
-- **Accessibilità mirata**:
-  - live region `aria-live="polite"` nella pagina sintassi per annunciare conteggio risultati o nessun match.
-  - `scroll-margin-top` per evitare che anchor/focus finiscano sotto header sticky.
-  - focus indicator rinforzato con `:focus-visible`.
+This version runs as a **single Next.js App Router project on Vercel** with serverless API routes and an external PostgreSQL database.
 
-## Architettura unica
-- Le pagine HTML caricano solo gli script modulari in `src/pages/*.js` con `type="module"`.
-- I vecchi file `*-page.js` non vengono più usati: ogni modifica passa dall'entrypoint in `src/`.
+## Features
 
-## Come testare manualmente
-1. Apri `index.html`: la home deve essere snella (senza tutte le sezioni del lab insieme).
-2. Apri `syntax.html`, cerca un topic e usa `Apri nel Playground`:
-   - deve aprire `playground.html` con query precompilata;
-   - dialetto impostato da querystring;
-   - query eseguita automaticamente (`autorun=1`).
-3. In `playground.html` carica uno starter Guided/Trainer con TODO:
-   - deve apparire il riepilogo `TODO trovati: N`;
-   - `Prossimo TODO` deve selezionare/scorrere alla successiva occorrenza.
-4. In `syntax.html` verifica accessibilità:
-   - la ricerca annuncia risultati/no match in live region;
-   - aprendo un permalink `#topic` il target non resta nascosto dal header.
+- Session isolation per user using dedicated schema: `session_<sessionId>`.
+- Real PostgreSQL execution (no browser SQL engine).
+- Safety controls:
+  - single-statement enforcement
+  - blocked dangerous commands
+  - `SET LOCAL statement_timeout = '3000ms'`
+  - `SET LOCAL search_path = session_<sessionId>, public`
+  - auto-wrap SELECT/CTE without LIMIT to max 500 rows
+- Session lifecycle API: create/reset/close + TTL cleanup.
+- Query logs in `app.query_log`.
+- Vercel cron for cleanup every 10 minutes.
 
-## Aggiungere contenuti e validarli
-- Keyword: aggiungi o modifica le voci in `src/data/keyword-entries.js` (usa `examples.sqlite`).
-- Sintassi: aggiorna `src/data/syntax-topics.js` con snippet SQLite nel campo `snippets.sqlite`.
-- Percorso guidato: modifica `starter.sqlite` in `src/data/guided-data.js`.
-- Trainer: aggiorna le query in `src/data/trainer-data.js`.
-- Esegui `npm run validate:snippets` per verificare che tutti gli snippet SQLite compilino sul database demo (usa `createDemoDb`).
+## Project structure
 
-## Limiti noti
-- Il core runtime resta su `sql.js` (SQLite in browser): il dialetto è didattico e non cambia l'engine.
-- `guided.html`, `trainer.html`, `keywords.html` sono entry-point dedicati che rimandano al lab operativo (`playground.html`) per esecuzione SQL e verifiche.
+- `app/api/create-session/route.ts`
+- `app/api/execute/route.ts`
+- `app/api/reset-session/route.ts`
+- `app/api/close-session/route.ts`
+- `app/api/cleanup/route.ts`
+- `lib/db.ts`
+- `lib/session.ts`
+- `lib/queryGuard.ts`
+- `lib/sqlSeed.ts`
+- `database/base_schema.sql`
+- `scripts/seed_local.ts`
+- `docker-compose.yml`
+- `vercel.json`
+
+## Local setup
+
+1. Install dependencies:
+
+   ```bash
+   npm install
+   ```
+
+2. Start PostgreSQL:
+
+   ```bash
+   docker compose up -d
+   ```
+
+3. Create `.env.local`:
+
+   ```bash
+   DATABASE_URL=postgres://sql_lab:sql_lab_pw@localhost:5432/sql_lab
+   ```
+
+4. Run app:
+
+   ```bash
+   npm run dev
+   ```
+
+5. Open `http://localhost:3000`.
+
+## Vercel deployment
+
+1. Push to Git provider.
+2. Import project in Vercel.
+3. Set environment variable in Vercel project:
+
+   - `DATABASE_URL=postgres://<user>:<password>@<host>:<port>/<db>?sslmode=require`
+
+4. Deploy.
+5. Ensure `vercel.json` is present so cron triggers `/api/cleanup` every 10 minutes.
+
+## Database security requirements
+
+Use a dedicated PostgreSQL user for `DATABASE_URL` with these constraints:
+
+- Must **NOT** be superuser.
+- Must **NOT** own the database.
+- Grant only minimum privileges needed on `app` schema and ability to create/drop objects in `session_*` schemas.
+
+App-level filtering is only first-line defense; role privileges are the final safety net.
+
+## API contracts
+
+- `POST /api/create-session` → `{ sessionId, expiresAt, limits }`
+- `POST /api/execute` with `{ sessionId, sql }` → success `{ columns, rows, rowCount, durationMs }` or error `{ error: { code, message } }`
+- `POST /api/reset-session` with `{ sessionId }` → `{ ok: true }`
+- `POST /api/close-session` with `{ sessionId }` → `{ ok: true }`
+- `GET|POST /api/cleanup` → `{ ok: true, cleaned }`
+
+## Common failure modes
+
+- **Too many connections**: lower pool size in `lib/db.ts` or enable Postgres pooling (e.g. PgBouncer/provider pooler).
+- **Timeout errors**: queries are hard-limited to 3000ms by `statement_timeout`.
+- **Blocked queries**: if query contains forbidden operations/comments/multi-statements it is rejected.
+- **Build/runtime missing env**: verify `DATABASE_URL` exists locally and in Vercel.
