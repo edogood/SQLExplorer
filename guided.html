@@ -33,8 +33,11 @@
     <section class="panel">
       <div class="panel-head">
         <h2>Percorso Guidato</h2>
-        <p>Step con obiettivo, hint e starter per dialetto. L'esecuzione avviene nel Playground tramite deep-link.</p>
-        <span id="guidedCount" class="keyword-count"></span>
+        <p>Step con obiettivo, hint, verifica output e tracking avanzamento.</p>
+        <div class="status-row">
+          <span id="guidedCount" class="badge neutral"></span>
+          <button id="resetProgressBtn" class="btn btn-secondary" type="button">Reset progress</button>
+        </div>
       </div>
 
       <div id="guidedList" class="keyword-list"></div>

@@ -1,84 +1,64 @@
-export const GUIDED_STEPS = [
-  {
-    id: 's1',
-    title: 'Filtro base clienti',
-    goal: 'Trova i clienti Enterprise ordinati per credit_limit decrescente.',
-    hint: 'Usa WHERE sul segmento, ORDER BY e LIMIT/TOP.',
-    topics: ['SELECT', 'WHERE', 'ORDER BY', 'LIMIT/TOP'],
-    starter: {
-      sqlite: "SELECT id, name, segment, credit_limit\nFROM customers\n/* TODO: filtra segmento Enterprise */\nORDER BY credit_limit DESC\nLIMIT 20;",
-      postgresql: "SELECT id, name, segment, credit_limit\nFROM customers\n/* TODO: filtra segmento Enterprise */\nORDER BY credit_limit DESC\nLIMIT 20;",
-      sqlserver: "SELECT TOP 20 id, name, segment, credit_limit\nFROM customers\n/* TODO: filtra segmento Enterprise */\nORDER BY credit_limit DESC;"
-    },
-    solution: {
-      sqlite: "SELECT id, name, segment, credit_limit\nFROM customers\nWHERE segment = 'Enterprise'\nORDER BY credit_limit DESC\nLIMIT 20;",
-      postgresql: "SELECT id, name, segment, credit_limit\nFROM customers\nWHERE segment = 'Enterprise'\nORDER BY credit_limit DESC\nLIMIT 20;",
-      sqlserver: "SELECT TOP 20 id, name, segment, credit_limit\nFROM customers\nWHERE segment = 'Enterprise'\nORDER BY credit_limit DESC;"
-    },
-    requiredTokens: ['SELECT', 'WHERE', 'ORDER BY', 'ENTERPRISE']
-  },
-  {
-    id: 's2',
-    title: 'Join + aggregazione revenue',
-    goal: 'Calcola il revenue per segmento e valuta media ordine.',
-    hint: 'Join customers-orders, poi GROUP BY segment con SUM/AVG.',
-    topics: ['JOIN', 'GROUP BY', 'SUM', 'AVG'],
-    starter: {
-      sqlite: 'SELECT c.segment,\n       ROUND(SUM(o.total_amount), 2) AS revenue,\n       ROUND(AVG(o.total_amount), 2) AS avg_order\nFROM customers c\nJOIN orders o ON o.customer_id = c.id\nWHERE o.status IN (\'PAID\',\'SHIPPED\',\'REFUNDED\')\nGROUP BY c.segment\nORDER BY revenue DESC;',
-      postgresql: 'SELECT c.segment,\n       ROUND(SUM(o.total_amount), 2) AS revenue,\n       ROUND(AVG(o.total_amount), 2) AS avg_order\nFROM customers c\nJOIN orders o ON o.customer_id = c.id\nWHERE o.status IN (\'PAID\',\'SHIPPED\',\'REFUNDED\')\nGROUP BY c.segment\nORDER BY revenue DESC;',
-      sqlserver: 'SELECT c.segment,\n       ROUND(SUM(o.total_amount), 2) AS revenue,\n       ROUND(AVG(o.total_amount), 2) AS avg_order\nFROM customers c\nJOIN orders o ON o.customer_id = c.id\nWHERE o.status IN (\'PAID\',\'SHIPPED\',\'REFUNDED\')\nGROUP BY c.segment\nORDER BY revenue DESC;'
-    },
-    solution: {},
-    requiredTokens: ['JOIN', 'GROUP BY', 'SUM', 'AVG']
-  },
-  {
-    id: 's3',
-    title: 'CTE e trend mensile',
-    goal: 'Costruisci trend mensile e delta col mese precedente.',
-    hint: 'CTE monthly + LAG OVER (ORDER BY mese).',
-    topics: ['WITH', 'LAG', 'OVER', 'ORDER BY'],
-    starter: {
-      sqlite: "WITH monthly AS (\n  SELECT substr(order_date, 1, 7) AS mese,\n         ROUND(SUM(total_amount), 2) AS totale\n  FROM orders\n  WHERE status IN ('PAID','SHIPPED','REFUNDED')\n  GROUP BY substr(order_date, 1, 7)\n)\nSELECT mese,\n       totale,\n       ROUND(totale - LAG(totale) OVER (ORDER BY mese), 2) AS delta\nFROM monthly\nORDER BY mese;",
-      postgresql: "WITH monthly AS (\n  SELECT to_char(CAST(order_date AS date), 'YYYY-MM') AS mese,\n         ROUND(SUM(total_amount), 2) AS totale\n  FROM orders\n  WHERE status IN ('PAID','SHIPPED','REFUNDED')\n  GROUP BY to_char(CAST(order_date AS date), 'YYYY-MM')\n)\nSELECT mese,\n       totale,\n       ROUND(totale - LAG(totale) OVER (ORDER BY mese), 2) AS delta\nFROM monthly\nORDER BY mese;",
-      sqlserver: "WITH monthly AS (\n  SELECT LEFT(order_date, 7) AS mese,\n         ROUND(SUM(total_amount), 2) AS totale\n  FROM orders\n  WHERE status IN ('PAID','SHIPPED','REFUNDED')\n  GROUP BY LEFT(order_date, 7)\n)\nSELECT mese,\n       totale,\n       ROUND(totale - LAG(totale) OVER (ORDER BY mese), 2) AS delta\nFROM monthly\nORDER BY mese;"
-    },
-    solution: {},
-    requiredTokens: ['WITH', 'LAG', 'OVER']
-  },
-  {
-    id: 's4',
-    title: 'Cast e Convert',
-    goal: 'Mostra totale ordine come numero intero e come testo nel dialetto attivo.',
-    hint: 'Usa CAST sempre; CONVERT e TRY_CONVERT sono differenze tipiche SQL Server.',
-    topics: ['CAST', 'CONVERT', 'TRY_CONVERT'],
-    starter: {
-      sqlite: "SELECT o.id,\n       CAST(o.total_amount AS INTEGER) AS total_int,\n       CONVERT('TEXT', o.total_amount) AS total_text,\n       TRY_CONVERT('REAL', o.total_amount) AS total_real\nFROM orders o\nORDER BY o.total_amount DESC\nLIMIT 20;",
-      postgresql: "SELECT o.id,\n       CAST(o.total_amount AS INTEGER) AS total_int,\n       o.total_amount::text AS total_text,\n       CAST(o.total_amount AS NUMERIC) AS total_real\nFROM orders o\nORDER BY o.total_amount DESC\nLIMIT 20;",
-      sqlserver: "SELECT TOP 20 o.id,\n       CAST(o.total_amount AS INT) AS total_int,\n       CONVERT(VARCHAR(80), o.total_amount) AS total_text,\n       TRY_CONVERT(FLOAT, o.total_amount) AS total_real\nFROM orders o\nORDER BY o.total_amount DESC;"
-    },
-    solution: {},
-    requiredTokensByDialect: {
-      sqlite: ['CAST', 'CONVERT', 'TRY_CONVERT'],
-      postgresql: ['CAST', '::TEXT'],
-      sqlserver: ['CAST', 'CONVERT', 'TRY_CONVERT']
-    }
-  },
-  {
-    id: 's5',
-    title: 'Transazione con rollback',
-    goal: 'Simula aumento prezzi software e annulla tutto con ROLLBACK.',
-    hint: 'BEGIN ... UPDATE ... SELECT di controllo ... ROLLBACK.',
-    topics: ['BEGIN', 'UPDATE', 'ROLLBACK'],
-    starter: {
-      sqlite: "BEGIN;\nUPDATE products\nSET price = ROUND(price * 1.02, 2)\nWHERE category = 'Software';\nSELECT category, ROUND(AVG(price), 2) AS avg_price\nFROM products\nGROUP BY category;\nROLLBACK;",
-      postgresql: "BEGIN;\nUPDATE products\nSET price = ROUND(price * 1.02, 2)\nWHERE category = 'Software';\nSELECT category, ROUND(AVG(price), 2) AS avg_price\nFROM products\nGROUP BY category;\nROLLBACK;",
-      sqlserver: "BEGIN TRANSACTION;\nUPDATE products\nSET price = ROUND(price * 1.02, 2)\nWHERE category = 'Software';\nSELECT category, ROUND(AVG(price), 2) AS avg_price\nFROM products\nGROUP BY category;\nROLLBACK TRANSACTION;"
-    },
-    solution: {},
-    requiredTokensByDialect: {
-      sqlite: ['BEGIN', 'UPDATE', 'ROLLBACK'],
-      postgresql: ['BEGIN', 'UPDATE', 'ROLLBACK'],
-      sqlserver: ['BEGIN', 'UPDATE', 'ROLLBACK']
-    }
-  }
+function step(id, title, goal, level, topics, sql, hint = '') {
+  return {
+    id,
+    title,
+    level,
+    goal,
+    topics,
+    hint,
+    starter: { sqlite: sql, postgresql: sql, sqlserver: sql },
+    solution: { sqlite: sql },
+    expectedSignature: null,
+    ignoreOrder: false
+  };
+}
+
+const sqls = [
+  step('g1', 'Filtro clienti Enterprise', 'Seleziona clienti Enterprise per credit_limit', 'Base', ['SELECT', 'WHERE', 'ORDER BY'], "SELECT id, name, segment, credit_limit\nFROM customers\nWHERE segment = 'Enterprise'\nORDER BY credit_limit DESC\nLIMIT 20;"),
+  step('g2', 'Conteggio ordini per stato', 'Conta ordini per status', 'Base', ['COUNT', 'GROUP BY'], "SELECT status, COUNT(*) AS n_orders\nFROM orders\nGROUP BY status\nORDER BY n_orders DESC;"),
+  step('g3', 'Revenue per segmento', 'Somma totale per segmento', 'Base', ['SUM', 'GROUP BY'], "SELECT c.segment, ROUND(SUM(o.total_amount),2) AS revenue\nFROM orders o\nJOIN customers c ON c.id = o.customer_id\nWHERE o.status IN ('PAID','SHIPPED')\nGROUP BY c.segment\nORDER BY revenue DESC;"),
+  step('g4', 'Prodotti più venduti', 'Top prodotti per quantità', 'Base', ['SUM', 'GROUP BY'], "SELECT p.id, p.name, SUM(oi.quantity) AS qty\nFROM order_items oi\nJOIN products p ON p.id = oi.product_id\nGROUP BY p.id\nORDER BY qty DESC\nLIMIT 10;"),
+  step('g5', 'Revenue giornaliera', 'Totale giornaliero ordini', 'Base', ['DATE', 'GROUP BY'], "SELECT order_date AS day, ROUND(SUM(total_amount),2) AS revenue\nFROM orders\nWHERE status IN ('PAID','SHIPPED')\nGROUP BY order_date\nORDER BY day;"),
+  step('g6', 'Trend mensile + delta', 'Delta rispetto al mese precedente', 'Intermedio', ['CTE', 'LAG'], "WITH monthly AS (\n  SELECT substr(order_date,1,7) AS ym, SUM(total_amount) AS revenue\n  FROM orders\n  WHERE status IN ('PAID','SHIPPED')\n  GROUP BY substr(order_date,1,7)\n)\nSELECT ym, revenue, revenue - LAG(revenue) OVER(ORDER BY ym) AS delta\nFROM monthly\nORDER BY ym;"),
+  step('g7', 'Running total ordini', 'Somma cumulativa per data', 'Intermedio', ['WINDOW'], "SELECT order_date, total_amount,\n       SUM(total_amount) OVER(ORDER BY order_date ROWS UNBOUNDED PRECEDING) AS running_total\nFROM orders\nWHERE status IN ('PAID','SHIPPED')\nORDER BY order_date\nLIMIT 120;"),
+  step('g8', 'Top 3 ordini per cliente', 'Tre ordini più alti per cliente', 'Intermedio', ['ROW_NUMBER'], "WITH ranked AS (\n  SELECT id, customer_id, total_amount,\n         ROW_NUMBER() OVER(PARTITION BY customer_id ORDER BY total_amount DESC) AS rn\n  FROM orders\n)\nSELECT * FROM ranked WHERE rn <= 3;"),
+  step('g9', 'Ordini senza pagamento', 'Trova ordini privi di pagamento', 'Base', ['LEFT JOIN'], "SELECT o.id, o.customer_id\nFROM orders o\nLEFT JOIN payments p ON p.order_id = o.id\nWHERE p.id IS NULL\nLIMIT 20;"),
+  step('g10', 'Prodotti mai ordinati', 'Prodotti senza riga in order_items', 'Base', ['ANTI JOIN'], "SELECT p.id, p.name\nFROM products p\nLEFT JOIN order_items oi ON oi.product_id = p.id\nWHERE oi.id IS NULL\nLIMIT 20;"),
+  step('g11', 'Distribuzione sconti', 'Contare frequenza sconti', 'Base', ['GROUP BY'], "SELECT discount_amount, COUNT(*) AS freq\nFROM orders\nGROUP BY discount_amount\nORDER BY freq DESC\nLIMIT 15;"),
+  step('g12', 'Ritardi spedizioni', 'Giorni tra shipped e delivered', 'Intermedio', ['DATEDIFF'], "SELECT o.id, julianday(s.delivered_at) - julianday(s.shipped_at) AS days\nFROM shipments s\nJOIN orders o ON o.id = s.order_id\nWHERE s.delivered_at IS NOT NULL\nORDER BY days DESC\nLIMIT 20;"),
+  step('g13', 'Resi e refund', 'Somma refund per motivo', 'Base', ['GROUP BY'], "SELECT reason, ROUND(SUM(refund_amount),2) AS refund_total, COUNT(*) AS n\nFROM returns\nGROUP BY reason;"),
+  step('g14', 'Conversione USD', 'Valore ordini in USD', 'Intermedio', ['JOIN'], "SELECT o.id, o.currency, r.usd_rate, ROUND(o.total_amount * r.usd_rate,2) AS usd_value\nFROM orders o\nJOIN currency_rates r ON r.currency = o.currency;"),
+  step('g15', 'Eventi per device', 'Conteggio eventi per device', 'Base', ['GROUP BY'], "SELECT device, COUNT(*) AS hits\nFROM events\nGROUP BY device\nORDER BY hits DESC;"),
+  step('g16', 'Sessioni duplicate', 'Sessioni con troppe hit', 'Intermedio', ['HAVING'], "SELECT session_id, COUNT(*) AS hits\nFROM events\nGROUP BY session_id\nHAVING COUNT(*) > 5\nORDER BY hits DESC\nLIMIT 20;"),
+  step('g17', 'Funnel carrello-acquisto', 'Conversione add_to_cart -> purchase', 'Intermedio', ['CASE', 'GROUP BY'], "WITH steps AS (\n  SELECT session_id,\n         MAX(event_type='add_to_cart') AS add_cart,\n         MAX(event_type='purchase') AS purchase\n  FROM events\n  GROUP BY session_id\n)\nSELECT SUM(add_cart) AS sessions_cart,\n       SUM(purchase) AS sessions_purchase,\n       ROUND(SUM(purchase)*1.0/NULLIF(SUM(add_cart),0),2) AS conv_rate\nFROM steps;"),
+  step('g18', 'Coorte primo ordine', 'Cohort per mese primo ordine', 'Intermedio', ['MIN', 'GROUP BY'], "SELECT customer_id, substr(MIN(order_date),1,7) AS cohort\nFROM orders\nGROUP BY customer_id\nORDER BY cohort LIMIT 50;"),
+  step('g19', 'Retention mensile', 'Attività per coorte', 'Avanzato', ['JOIN', 'GROUP BY'], "WITH first_order AS (\n  SELECT customer_id, substr(MIN(order_date),1,7) AS cohort FROM orders GROUP BY customer_id\n), activity AS (\n  SELECT f.cohort, substr(o.order_date,1,7) AS ym, o.customer_id\n  FROM first_order f JOIN orders o ON o.customer_id = f.customer_id\n)\nSELECT cohort, ym, COUNT(DISTINCT customer_id) AS active\nFROM activity\nGROUP BY cohort, ym\nORDER BY cohort, ym;"),
+  step('g20', 'Ticket medio per cliente', 'Average order value per cliente', 'Base', ['AVG'], "SELECT customer_id, ROUND(AVG(total_amount),2) AS aov\nFROM orders\nWHERE status IN ('PAID','SHIPPED')\nGROUP BY customer_id\nORDER BY aov DESC\nLIMIT 20;"),
+  step('g21', 'Margine per prodotto', 'Margine stimato per prodotto', 'Intermedio', ['SUM'], "SELECT p.id, p.name,\n       ROUND(SUM(oi.quantity * (oi.unit_price - p.cost_price)),2) AS margin\nFROM order_items oi\nJOIN products p ON p.id = oi.product_id\nGROUP BY p.id\nORDER BY margin DESC\nLIMIT 20;"),
+  step('g22', 'Explain indice', 'EXPLAIN su filtro customer_id', 'Intermedio', ['EXPLAIN'], "EXPLAIN QUERY PLAN SELECT * FROM orders WHERE customer_id = 10 AND status='PAID' ORDER BY order_date DESC LIMIT 10;"),
+  step('g23', 'Contatti mancanti', 'Clienti senza email e phone', 'Base', ['IS NULL'], "SELECT id, name FROM customers WHERE email IS NULL AND phone IS NULL;"),
+  step('g24', 'Outlier importo', 'Ordini null o > media*4', 'Intermedio', ['CASE'], "SELECT id, total_amount\nFROM orders\nWHERE total_amount IS NULL OR total_amount > (SELECT AVG(total_amount)*4 FROM orders WHERE total_amount IS NOT NULL)\nLIMIT 50;"),
+  step('g25', 'Ordini per settimana', 'Aggrega per week da dim_date', 'Base', ['JOIN', 'GROUP BY'], "SELECT d.week, COUNT(*) AS n\nFROM fact_orders f\nJOIN dim_date d ON d.date = f.date\nGROUP BY d.week\nORDER BY d.week;"),
+  step('g26', 'Stato fact_orders', 'Count per status', 'Base', ['GROUP BY'], "SELECT status, COUNT(*) AS n\nFROM fact_orders\nGROUP BY status;"),
+  step('g27', 'Lag/Lead revenue', 'Confronto periodo precedente/successivo', 'Intermedio', ['LAG','LEAD'], "SELECT date, total_amount,\n       LAG(total_amount) OVER(ORDER BY date) AS prev_total,\n       LEAD(total_amount) OVER(ORDER BY date) AS next_total\nFROM fact_orders\nORDER BY date\nLIMIT 50;"),
+  step('g28', 'Gap and islands date', 'Intervalli consecutivi con ordini', 'Avanzato', ['ROW_NUMBER'], "WITH ordered AS (\n  SELECT date, ROW_NUMBER() OVER(ORDER BY date) AS rn FROM fact_orders\n), grp AS (\n  SELECT date, rn - ROW_NUMBER() OVER(ORDER BY date) AS g FROM ordered\n)\nSELECT MIN(date) AS start_date, MAX(date) AS end_date, COUNT(*) AS len\nFROM grp\nGROUP BY g\nORDER BY start_date;"),
+  step('g29', 'Sessionization 30 min', 'Segmenta sessioni per utente', 'Avanzato', ['LAG','CASE'], "WITH ordered AS (\n  SELECT user_id, event_time,\n         LAG(event_time) OVER(PARTITION BY user_id ORDER BY event_time) AS prev_time\n  FROM events\n), flagged AS (\n  SELECT *, CASE WHEN prev_time IS NULL OR (julianday(event_time)-julianday(prev_time))*86400 > 1800 THEN 1 ELSE 0 END AS new_session\n  FROM ordered\n)\nSELECT user_id, SUM(new_session) OVER(PARTITION BY user_id ORDER BY event_time) AS session_num, event_time\nFROM flagged\nLIMIT 50;"),
+  step('g30', 'Union conteggi', 'Confronta conteggi ordini vs resi', 'Base', ['UNION ALL'], "SELECT 'orders' AS source, COUNT(*) AS n FROM orders\nUNION ALL\nSELECT 'returns', COUNT(*) FROM returns;"),
+  step('g31', 'Mediana stimata', 'Stima mediana total_amount', 'Intermedio', ['PERCENTILE'], "SELECT total_amount FROM orders ORDER BY total_amount LIMIT 1 OFFSET (SELECT COUNT(*)/2 FROM orders);"),
+  step('g32', 'Calendario ricorsivo', 'Genera 30 giorni', 'Intermedio', ['WITH RECURSIVE'], "WITH RECURSIVE dates(d) AS (\n  SELECT MIN(date) FROM dim_date\n  UNION ALL\n  SELECT date(d, '+1 day') FROM dates WHERE d < date('2025-12-31')\n)\nSELECT COUNT(*) FROM dates;"),
+  step('g33', 'Incremental load demo', 'Carica ordini dopo max data', 'Intermedio', ['INSERT SELECT'], "INSERT INTO fact_orders(order_id, date, customer_id, total_amount, status, channel)\nSELECT o.id, o.order_date, o.customer_id, o.total_amount, o.status, o.channel\nFROM orders o\nWHERE o.order_date > (SELECT COALESCE(MAX(date),'1970-01-01') FROM fact_orders);"),
+  step('g34', 'Dedup eventi', 'Rimuovi duplicati per sessione/time', 'Avanzato', ['ROW_NUMBER','DELETE'], "WITH ranked AS (\n  SELECT event_id, session_id, event_time,\n         ROW_NUMBER() OVER(PARTITION BY session_id, event_time ORDER BY event_id) AS rn\n  FROM events\n)\nDELETE FROM events WHERE event_id IN (SELECT event_id FROM ranked WHERE rn > 1);"),
+  step('g35', 'Transazione rollback', 'Aggiorna e annulla', 'Intermedio', ['BEGIN','ROLLBACK'], "BEGIN;\nUPDATE orders SET status='PENDING' WHERE status='PAID' AND id < 10;\nSELECT status, COUNT(*) FROM orders GROUP BY status;\nROLLBACK;"),
+  step('g36', 'Upsert cliente', 'Inserisci o aggiorna cliente', 'Intermedio', ['UPSERT'], "INSERT INTO customers (id, name, segment)\nVALUES (9999, 'Temp Customer', 'SMB')\nON CONFLICT(id) DO UPDATE SET segment = 'SMB';"),
+  step('g37', 'Vista top clienti', 'Crea vista con top revenue', 'Intermedio', ['CREATE VIEW'], "CREATE VIEW top_customers AS\nSELECT customer_id, SUM(total_amount) AS revenue\nFROM orders\nGROUP BY customer_id\nORDER BY revenue DESC\nLIMIT 20;"),
+  step('g38', 'Delete ordini vecchi cancellati', 'Rimuovi ordini cancellati datati', 'Base', ['DELETE'], "DELETE FROM orders\nWHERE status='CANCELLED' AND order_date < '2025-06-01';"),
+  step('g39', 'Audit log insert', 'Scrivi su audit_log', 'Base', ['INSERT'], "INSERT INTO audit_log (entity, event_type, payload, created_at)\nVALUES ('orders','UPDATE','{\"demo\":true}', datetime('now'));"),
+  step('g40', 'Explain join clienti', 'Leggi piano join clienti-ordini', 'Base', ['EXPLAIN'], "EXPLAIN QUERY PLAN SELECT c.name, SUM(o.total_amount)\nFROM customers c\nJOIN orders o ON o.customer_id = c.id\nGROUP BY c.id;"),
+  step('g41', 'LTV per segmento', 'Calcola lifetime value per segmento', 'Intermedio', ['SUM','GROUP BY'], "SELECT c.segment, ROUND(SUM(o.total_amount),2) AS ltv\nFROM orders o JOIN customers c ON c.id=o.customer_id\nGROUP BY c.segment\nORDER BY ltv DESC;"),
+  step('g42', 'Calendario cross join', 'Genera combinazioni date/segment', 'Avanzato', ['CROSS JOIN'], "SELECT d.date, c.segment\nFROM dim_date d\nCROSS JOIN (SELECT DISTINCT segment FROM customers) c\nLIMIT 50;"),
+  step('g43', 'Bucket importo', 'Classifica ordini per fascia', 'Base', ['CASE'], "SELECT id, total_amount,\n       CASE WHEN total_amount > 500 THEN 'High'\n            WHEN total_amount > 200 THEN 'Mid'\n            ELSE 'Low' END AS bucket\nFROM orders\nORDER BY total_amount DESC\nLIMIT 30;"),
+  step('g44', 'Rollup emulato', 'Totali per channel e generale', 'Intermedio', ['UNION ALL'], "SELECT channel, status, COUNT(*) AS n FROM orders GROUP BY channel, status\nUNION ALL\nSELECT channel, NULL, COUNT(*) FROM orders GROUP BY channel;"),
+  step('g45', 'JSON cart size', 'Estrai cart_size dagli eventi', 'Intermedio', ['JSON_EXTRACT'], "SELECT event_id, JSON_EXTRACT(metadata, '$.cart_size') AS cart_size\nFROM events\nWHERE event_type='add_to_cart'\nLIMIT 20;")
 ];
+
+export const GUIDED_STEPS = sqls;
