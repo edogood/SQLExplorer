@@ -8,7 +8,9 @@
     "build": "npm run sync:wasm && next build",
     "start": "next start",
     "lint": "next lint",
-    "typecheck": "tsc --noEmit"
+    "typecheck": "tsc --noEmit",
+    "test:e2e": "playwright test",
+    "db:ingest": "node scripts/ingest-content.mjs"
   },
   "dependencies": {
     "next": "14.2.16",
