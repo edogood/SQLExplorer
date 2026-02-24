@@ -1,17 +1,24 @@
 {
   "name": "sqlexplorer",
-  "version": "1.0.0",
+  "version": "2.0.0",
   "private": true,
   "scripts": {
-    "test:smoke": "npx playwright test --config=playwright.config.js",
-    "validate:snippets": "node scripts/validate_snippets.mjs"
-  },
-  "devDependencies": {
-    "@playwright/test": "^1.49.0",
-    "serve": "^14.2.4"
+    "dev": "next dev",
+    "build": "next build",
+    "start": "next start",
+    "lint": "next lint",
+    "typecheck": "tsc --noEmit"
   },
   "dependencies": {
-    "cytoscape": "^3.33.1",
-    "sql.js": "^1.10.2"
+    "next": "14.2.16",
+    "pg": "8.13.1",
+    "react": "18.3.1",
+    "react-dom": "18.3.1"
+  },
+  "devDependencies": {
+    "@types/node": "22.10.2",
+    "@types/react": "18.3.13",
+    "@types/react-dom": "18.3.1",
+    "typescript": "5.7.2"
   }
 }
