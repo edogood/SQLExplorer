@@ -9,21 +9,32 @@ type ExecuteResponse = {
   durationMs: number;
 };
 
-const DEFAULT_QUERY = `SELECT id, name, segment, country\nFROM customers\nORDER BY created_at DESC\nLIMIT 20;`;
+type ApiError = { error?: { code?: string; message?: string } };
+
+const DEFAULT_QUERY = `WITH revenue AS (
+  SELECT c.name, SUM(oi.quantity * oi.unit_price) AS total_revenue
+  FROM customers c
+  JOIN orders o ON o.customer_id = c.id
+  JOIN order_items oi ON oi.order_id = o.id
+  GROUP BY c.name
+)
+SELECT name, total_revenue
+FROM revenue
+ORDER BY total_revenue DESC`;
 
 export default function Home() {
-  const [sessionId, setSessionId] = useState<string>('');
+  const [sessionId, setSessionId] = useState('');
   const [query, setQuery] = useState(DEFAULT_QUERY);
   const [loading, setLoading] = useState(false);
   const [result, setResult] = useState<ExecuteResponse | null>(null);
-  const [error, setError] = useState<string>('');
+  const [error, setError] = useState('');
 
-  const canRun = useMemo(() => sessionId.length > 0 && !loading, [sessionId, loading]);
+  const canRun = useMemo(() => sessionId.length > 0 && !loading, [loading, sessionId]);
 
   useEffect(() => {
-    const stored = localStorage.getItem('sql-lab-session-id');
-    if (stored) {
-      setSessionId(stored);
+    const existing = localStorage.getItem('sql-lab-session-id');
+    if (existing) {
+      setSessionId(existing);
       return;
     }
     void createSession();
@@ -34,13 +45,16 @@ export default function Home() {
     setError('');
     try {
       const res = await fetch('/api/create-session', { method: 'POST' });
-      const payload = await res.json();
-      if (!res.ok) throw new Error(payload?.error?.message ?? 'Errore creazione sessione');
+      const payload = (await res.json()) as { sessionId?: string } & ApiError;
+      if (!res.ok || !payload.sessionId) {
+        throw new Error(payload.error?.message ?? 'Unable to create session.');
+      }
+
       setSessionId(payload.sessionId);
       localStorage.setItem('sql-lab-session-id', payload.sessionId);
       setResult(null);
     } catch (err) {
-      setError(err instanceof Error ? err.message : 'Errore inatteso');
+      setError(err instanceof Error ? err.message : 'Unexpected error.');
     } finally {
       setLoading(false);
     }
@@ -56,11 +70,13 @@ export default function Home() {
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ sessionId })
       });
-      const payload = await res.json();
-      if (!res.ok || !payload.ok) throw new Error(payload?.error?.message ?? 'Reset fallito');
+      const payload = (await res.json()) as { ok?: boolean } & ApiError;
+      if (!res.ok || !payload.ok) {
+        throw new Error(payload.error?.message ?? 'Session reset failed.');
+      }
       setResult(null);
     } catch (err) {
-      setError(err instanceof Error ? err.message : 'Errore inatteso');
+      setError(err instanceof Error ? err.message : 'Unexpected error.');
     } finally {
       setLoading(false);
     }
@@ -69,19 +85,27 @@ export default function Home() {
   async function runQuery(event: FormEvent) {
     event.preventDefault();
     if (!sessionId) return;
+
     setLoading(true);
     setError('');
+
     try {
       const res = await fetch('/api/execute', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ sessionId, sql: query })
       });
-      const payload = await res.json();
-      if (!res.ok) throw new Error(payload?.error?.message ?? 'Esecuzione fallita');
+
+      const payload = (await res.json()) as ExecuteResponse & ApiError;
+      if (!res.ok) {
+        throw new Error(payload.error?.message ?? 'Query failed.');
+      }
       setResult(payload);
     } catch (err) {
-      setError(err instanceof Error ? err.message : 'Errore inatteso');
+      setError(err instanceof Error ? err.message : 'Unexpected error.');
+      if (err instanceof Error && err.message.toLowerCase().includes('expired')) {
+        localStorage.removeItem('sql-lab-session-id');
+      }
     } finally {
       setLoading(false);
     }
@@ -113,9 +137,15 @@ export default function Home() {
             <label htmlFor="queryInput">Query editor</label>
             <textarea id="queryInput" spellCheck={false} rows={14} value={query} onChange={(e) => setQuery(e.target.value)} />
             <div className="controls-row">
-              <button className="btn btn-primary" type="submit" disabled={!canRun}>Esegui query</button>
-              <button className="btn btn-secondary" type="button" onClick={() => void createSession()} disabled={loading}>New Session</button>
-              <button className="btn btn-secondary" type="button" onClick={() => void resetSession()} disabled={!sessionId || loading}>Reset Session</button>
+              <button className="btn btn-primary" type="submit" disabled={!canRun}>
+                {loading ? 'Esecuzione...' : 'Esegui query'}
+              </button>
+              <button className="btn btn-secondary" type="button" onClick={() => void createSession()} disabled={loading}>
+                New Session
+              </button>
+              <button className="btn btn-secondary" type="button" onClick={() => void resetSession()} disabled={!sessionId || loading}>
+                Reset Session
+              </button>
             </div>
             {error ? <p className="error-text">{error}</p> : null}
           </div>
