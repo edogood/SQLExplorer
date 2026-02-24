@@ -3,8 +3,9 @@
   "version": "2.0.0",
   "private": true,
   "scripts": {
-    "dev": "next dev",
-    "build": "next build",
+    "sync:wasm": "node scripts/sync-wasm.mjs",
+    "dev": "npm run sync:wasm && next dev",
+    "build": "npm run sync:wasm && next build",
     "start": "next start",
     "lint": "next lint",
     "typecheck": "tsc --noEmit"
