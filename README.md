@@ -1,221 +1,48 @@
-# SQLExplorer (Level-2 Dynamic SQL Lab)
+# SQLExplorer (Next.js + PostgreSQL)
 
-SQLExplorer now executes **real PostgreSQL SQL** through Next.js API routes on Vercel (Node runtime), with schema-isolated sessions and lazy cleanup.
+Applicazione deploy-ready su Vercel con contenuti, esercizi, catalogo keyword e playground SQL guidati da PostgreSQL.
 
 ## Stack
+- Next.js App Router + TypeScript
+- PostgreSQL esterno (`DATABASE_URL`)
+- API routes Node.js per sessioni isolate e query execution
 
-- Next.js App Router (TypeScript)
-- Vercel API routes in `app/api/**/route.ts`
-- PostgreSQL via `pg` pool using `DATABASE_URL`
-- One schema per session: `session_<sessionId>`
-
-## Environment variables
-
-Required:
-
-- `DATABASE_URL=postgres://<user>:<password>@<host>:<port>/<db>?sslmode=require`
-
-## Local development
-
-1. Install dependencies:
-
-```bash
-npm install
-```
-
-2. Start local PostgreSQL:
-
+## Setup locale
+1. Avvia Postgres:
 ```bash
 docker compose up -d
 ```
-
-3. Configure `.env.local`:
-
+2. Configura env:
 ```bash
-DATABASE_URL=postgres://sql_lab:sql_lab_pw@localhost:5432/sql_lab
+cp .env.example .env.local
+# DATABASE_URL=postgresql://postgres:postgres@localhost:5432/sqlexplorer
 ```
-
-4. Start app:
-
+3. Installa e avvia:
 ```bash
+npm ci
 npm run dev
 ```
 
-5. Open `http://localhost:3000`.
+## Migrazioni + seed contenuti
+- `database/migrations/001_content.sql`
+- `database/seed/content.sql`
+- ingest dai file statici: `scripts/ingest-content.ts`
 
-## Vercel deploy
+## Sicurezza playground
+- schema per sessione: `session_<id>`
+- `statement_timeout=3000ms`
+- single statement enforced
+- query pericolose bloccate (`ALTER SYSTEM`, `DROP DATABASE`, `COPY`, `DO $$`, `pg_sleep`...)
+- `LIMIT 500` automatico per SELECT/CTE senza limit
 
-1. Push repository.
-2. Import project in Vercel.
-3. Set `DATABASE_URL` in Project Settings → Environment Variables.
-4. Deploy.
-5. Optional (not required for correctness): set a **daily** cron to `POST /api/cleanup`.
-   - On Vercel **Hobby**, cron jobs must run at most once per day.
-   - ✅ Example (allowed on Hobby): `0 3 * * *`
-   - ❌ Example (not allowed on Hobby): `*/10 * * * *`
+## Deploy Vercel
+- unico progetto Vercel
+- env obbligatoria: `DATABASE_URL`
+- API runtime Node.js
+- pooling globale (`lib/db.ts`)
 
-## Security model
-
-### Request safety guard (first line)
-
-- Rejects multi-statement SQL.
-- Blocks dangerous operations including:
-  - `DROP DATABASE`, `ALTER SYSTEM`, `CREATE ROLE`, `GRANT`, `REVOKE`, `COPY`, `\copy`, `VACUUM FULL`, `CLUSTER`, `pg_sleep`, `dblink`, `CREATE EXTENSION`, `ALTER ROLE`, `ALTER USER`, `DO $$`, `LISTEN`, `NOTIFY`.
-- Executes each query inside a transaction with:
-  - `SET LOCAL statement_timeout = '3000ms'`
-  - `SET LOCAL search_path = session_<sessionId>, public`
-
-### Row limits
-
-- Default `maxRows=500`.
-- For `SELECT`/`WITH` without explicit `LIMIT`, server wraps query:
-  - `SELECT * FROM ( <user_sql> ) AS q LIMIT 500`
-- Unsafe wrapping patterns (e.g. `FOR UPDATE`) are rejected and require explicit `LIMIT`.
-- DDL/DML are never auto-modified.
-
-### DB privilege model (second line)
-
-Create a minimal role for `DATABASE_URL` (non-superuser, non-db-owner):
-
-```sql
--- Run as admin once.
-CREATE ROLE sqlexplorer_app LOGIN PASSWORD 'replace_me' NOSUPERUSER NOCREATEDB NOCREATEROLE NOINHERIT;
-
--- App metadata schema.
-CREATE SCHEMA IF NOT EXISTS app AUTHORIZATION sqlexplorer_app;
-GRANT USAGE, CREATE ON SCHEMA app TO sqlexplorer_app;
-
--- Let app role use public but not admin the DB.
-GRANT CONNECT ON DATABASE sql_lab TO sqlexplorer_app;
-GRANT USAGE ON SCHEMA public TO sqlexplorer_app;
-
--- Needed so the role can create/drop per-session schemas it owns.
-GRANT CREATE ON DATABASE sql_lab TO sqlexplorer_app;
-
--- Optional hardening if existing DB has broad rights:
-REVOKE ALL ON DATABASE sql_lab FROM PUBLIC;
-GRANT CONNECT ON DATABASE sql_lab TO sqlexplorer_app;
-```
-
-Because each `session_*` schema is created by the app role, it can create/drop objects in those schemas while still lacking global superuser operations.
-
-## Lazy cleanup (Hobby-safe)
-
-No frequent cron is required.
-
-- `POST /api/create-session`: runs `cleanupExpiredSchemas(3)` **before** creating a new session.
-- `POST /api/execute`: runs `cleanupExpiredSchemas(1)` **before** execution.
-- `POST /api/reset-session`, `POST /api/close-session`: also run light cleanup.
-
-`cleanupExpiredSchemas(limit)` transaction logic:
-
-1. `SELECT ... FOR UPDATE SKIP LOCKED` expired sessions.
-2. For each row: `SELECT app.drop_schema($1)` then delete from `app.sessions`.
-3. Commit.
-
-## API contracts
-
-### `POST /api/create-session`
-
-```json
-{
-  "sessionId": "...",
-  "expiresAt": "...",
-  "limits": { "timeoutMs": 3000, "maxRows": 500 }
-}
-```
-
-### `POST /api/execute`
-Body:
-
-```json
-{ "sessionId": "...", "sql": "SELECT 1" }
-```
-
-Success:
-
-```json
-{ "columns": ["?column?"], "rows": [[1]], "rowCount": 1, "durationMs": 4 }
-```
-
-Error:
-
-```json
-{ "error": { "code": "QUERY_BLOCKED|TIMEOUT|SYNTAX|SESSION_EXPIRED|INTERNAL", "message": "..." } }
-```
-
-### `POST /api/reset-session`
-
-```json
-{ "ok": true }
-```
-
-### `POST /api/close-session`
-
-```json
-{ "ok": true }
-```
-
-### `POST /api/cleanup`
-
-```json
-{ "dropped": 2 }
-```
-
-## Smoke checks
-
-Run these against local app:
-
-```bash
-# 1) create-session works + seeds schema
-curl -s -X POST http://localhost:3000/api/create-session
-
-# 2) execute SELECT 1
-curl -s -X POST http://localhost:3000/api/execute -H 'content-type: application/json' -d '{"sessionId":"<sid>","sql":"SELECT 1"}'
-
-# 3) blocked dangerous query
-curl -s -X POST http://localhost:3000/api/execute -H 'content-type: application/json' -d '{"sessionId":"<sid>","sql":"ALTER SYSTEM SET work_mem = 64"}'
-
-# 4) blocked multi-statement
-curl -s -X POST http://localhost:3000/api/execute -H 'content-type: application/json' -d '{"sessionId":"<sid>","sql":"SELECT 1; SELECT 2"}'
-
-# 5) select without LIMIT returns <= 500 rows
-curl -s -X POST http://localhost:3000/api/execute -H 'content-type: application/json' -d '{"sessionId":"<sid>","sql":"SELECT * FROM generate_series(1, 2000)"}'
-
-# 6) expired session -> SESSION_EXPIRED (manually shorten expires_at in DB for quick test)
-
-# 7) lazy cleanup progression
-curl -s -X POST http://localhost:3000/api/cleanup
-```
-
-## Common pitfalls
-
-- **Too many connections**: keep pool small for serverless.
-- **Timeouts**: all queries are capped at 3000ms.
-- **Invalid sessionId reuse**: expired IDs return `SESSION_EXPIRED`; create a new session.
-- **No cron configured**: acceptable; lazy cleanup keeps system healthy over normal traffic.
-
-## Deploy su Vercel (Next + pagine legacy statiche)
-
-Checklist operativa:
-
-- **Root Directory**: impostare la root del progetto su `/` (cartella repository `SQLExplorer`).
-- **Framework Preset**: `Next.js`.
-- **Build Command**: `npm run build` (include sync automatico di `sql-wasm.wasm` in `public/assets`).
-- **Output**: `.next` (gestito automaticamente da Next su Vercel).
-- **Env Vars**: impostare `DATABASE_URL` se si usano le API PostgreSQL.
-
-Verifiche post-deploy:
-
-1. Aprire `/` (hub Next).
-2. Aprire `/playground`, `/keywords`, `/syntax` (route App Router).
-3. Aprire direttamente le pagine statiche legacy:
-   - `/keyword.html`
-   - `/syntax.html`
-   - `/guided.html`
-   - `/exercises.html`
-   - `/trainer.html`
-   - `/playground.html`
-4. Verificare che CSS/JS siano caricati da `/assets/...` senza 404.
-
-Nota: le pagine legacy sono pubblicate da `public/` e asset/script sono in `public/assets/...` e `public/assets/legacy/...`.
+## Definition of Done checklist
+- [x] Sezioni principali disponibili: home, playground, syntax, keywords, keyword, guided, trainer, exercises, database, visualizer
+- [x] Tutti i contenuti serviti da tabelle `content.*`
+- [x] Session execution isolata con cleanup lazy
+- [x] E2E Playwright multi-viewport e workflow CI

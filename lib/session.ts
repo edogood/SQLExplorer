@@ -19,8 +19,11 @@ export function buildSchemaName(sessionId: string): string {
 
 export async function ensureAppSchema(client: PoolClient): Promise<void> {
   const appSchemaPath = path.join(process.cwd(), 'database', 'app_schema.sql');
-  const appSchemaSql = await fs.readFile(appSchemaPath, 'utf8');
-  await client.query(appSchemaSql);
+  const contentMigrationPath = path.join(process.cwd(), 'database', 'migrations', '001_content.sql');
+  const contentSeedPath = path.join(process.cwd(), 'database', 'seed', 'content.sql');
+  await client.query(await fs.readFile(appSchemaPath, 'utf8'));
+  await client.query(await fs.readFile(contentMigrationPath, 'utf8'));
+  await client.query(await fs.readFile(contentSeedPath, 'utf8'));
 }
 
 export async function cleanupExpiredSchemas(client: PoolClient, limit: number): Promise<number> {
