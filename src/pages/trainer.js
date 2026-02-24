@@ -35,9 +35,8 @@ function render() {
 }
 
 if (typeof document !== 'undefined') {
-document.addEventListener('DOMContentLoaded', () => {
-  cacheDom();
-  render();
-});
-
+  document.addEventListener('DOMContentLoaded', () => {
+    cacheDom();
+    render();
+  });
 }

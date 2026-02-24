@@ -242,6 +242,5 @@ async function init() {
 }
 
 if (typeof document !== 'undefined') {
-document.addEventListener('DOMContentLoaded', init);
-
+  document.addEventListener('DOMContentLoaded', init);
 }

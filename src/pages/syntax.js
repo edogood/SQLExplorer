@@ -173,13 +173,12 @@ function handleActions(event) {
 }
 
 if (typeof document !== 'undefined') {
-document.addEventListener('DOMContentLoaded', () => {
-  cacheDom();
-  dom.search?.addEventListener('input', render);
-  dom.dialect?.addEventListener('change', render);
-  dom.list?.addEventListener('click', handleActions);
-  render();
-  window.addEventListener('hashchange', focusAnchorIfPresent);
-});
-
+  document.addEventListener('DOMContentLoaded', () => {
+    cacheDom();
+    dom.search?.addEventListener('input', render);
+    dom.dialect?.addEventListener('change', render);
+    dom.list?.addEventListener('click', handleActions);
+    render();
+    window.addEventListener('hashchange', focusAnchorIfPresent);
+  });
 }
