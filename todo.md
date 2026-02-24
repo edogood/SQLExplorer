@@ -1,0 +1,7 @@
+- [ ] Keyword catalog: expand `src/data/keyword-entries.js` to ~80-120 well-written entries (definitions, analogies/mechanisms, pitfalls, dialect notes, SQLite/PostgreSQL/SQL Server snippets, deep-link to Playground). Remove any shallow/placeholder content.
+- [ ] Guided path: replace current minimal steps with 40+ leveled steps (base/join/subquery/CTE/window/data-quality/performance/modeling/capstone). Each step needs goal, hints, starter per dialect, solution, expected signature for auto-check, deep-link to Playground, and localStorage progress tracking.
+- [ ] Exercises: build real exercise list in `src/data/exercises-data.js` with titles, level, concept tags (window/cte/join/perf/json/ddl/etc.), filters working in `src/pages/exercises.js`, deep-links to Playground, aligned to the expanded dataset.
+- [ ] Syntax reference: enlarge `src/data/syntax-topics.js` with DDL/DML/TCL/DCL sections and at least 30 useful patterns/templates (cohort/retention/funnel, gap-and-islands, top-N per group, sessionization, incremental loads, SCD concept) each with SQLite/PG/SQL Server variants and Playground deep-links.
+- [ ] Guided verification UI: add in-browser result verification (result signature or checksum) and progress timeline; persist progress with reset.
+- [ ] Documentation: add brief README section on page architecture and how to add keywords/steps/exercises; create CONTENT_GUIDE.md (or similar) with templates for keyword, guided step, exercise.
+- [ ] Smoke tests: run `npm run test:smoke` after changes and ensure nav/status expectations still pass.
