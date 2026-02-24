@@ -98,7 +98,7 @@ const base = [
     category: 'Set',
     syntax: 'SELECT ... UNION ALL SELECT ...;',
     description: 'Unisce result set mantenendo duplicati.',
-    sqlite: "SELECT customer_id FROM orders\nUNION ALL\nSELECT customer_id FROM returns;",
+    sqlite: "SELECT customer_id FROM orders\nUNION ALL\nSELECT o.customer_id FROM returns r JOIN orders o ON o.id = r.order_id;",
     useCases: ['Funnel con conteggi grezzi', 'Append dati già deduplicati a monte'],
     pitfalls: ['Duplicati inattesi se fonti non pulite']
   }),
@@ -107,7 +107,7 @@ const base = [
     category: 'Set',
     syntax: 'SELECT ... INTERSECT SELECT ...;',
     description: 'Restituisce righe presenti in entrambi i set.',
-    sqlite: 'SELECT customer_id FROM orders INTERSECT SELECT customer_id FROM returns;',
+    sqlite: 'SELECT customer_id FROM orders INTERSECT SELECT o.customer_id FROM returns r JOIN orders o ON o.id = r.order_id;',
     useCases: ['Trovare clienti con evento A e B', 'Verificare overlap dataset'],
     pitfalls: ['SQLite ordina implicitamente; aggiungere ORDER BY se serve ordine stabile']
   }),
@@ -116,8 +116,8 @@ const base = [
     category: 'Set',
     syntax: 'SELECT ... EXCEPT SELECT ...;',
     description: 'Restituisce righe presenti nel primo set ma non nel secondo.',
-    sqlite: 'SELECT customer_id FROM orders EXCEPT SELECT customer_id FROM returns;',
-    sqlserver: 'SELECT customer_id FROM orders EXCEPT SELECT customer_id FROM returns;',
+    sqlite: 'SELECT customer_id FROM orders EXCEPT SELECT o.customer_id FROM returns r JOIN orders o ON o.id = r.order_id;',
+    sqlserver: 'SELECT customer_id FROM orders EXCEPT SELECT o.customer_id FROM returns r JOIN orders o ON o.id = r.order_id;',
     useCases: ['Anti-join logico', 'Valori mancanti in seconda fonte'],
     pitfalls: ['In SQL Server ordine dei set è significativo; usare UNION ALL + NOT EXISTS per controllo più chiaro']
   }),
@@ -277,7 +277,7 @@ const base = [
     category: 'Join',
     syntax: 'JOIN tab USING(col)',
     description: 'Join su colonne con lo stesso nome.',
-    sqlite: 'SELECT * FROM orders JOIN payments USING(order_id);',
+    sqlite: 'SELECT r.order_id, r.reason, p.amount FROM returns r JOIN payments p USING(order_id);',
     useCases: ['Ridurre verbosità', 'Join dimensioni con chiavi standard'],
     pitfalls: ['Non gestisce colonne con nomi diversi']
   }),
@@ -587,7 +587,7 @@ const base = [
     category: 'Transaction',
     syntax: 'COMMIT;',
     description: 'Conferma transazione.',
-    sqlite: 'COMMIT;',
+    sqlite: "BEGIN; SELECT 1; COMMIT;",
     useCases: ['Persistenza modifiche', 'Chiusura batch'],
     pitfalls: ['Non annullabile dopo esecuzione']
   }),
@@ -596,7 +596,7 @@ const base = [
     category: 'Transaction',
     syntax: 'ROLLBACK;',
     description: 'Annulla transazione in corso.',
-    sqlite: 'ROLLBACK;',
+    sqlite: "BEGIN; UPDATE orders SET status='PENDING' WHERE id=2; ROLLBACK;",
     useCases: ['Ripristino dopo errore', 'Testing safe'],
     pitfalls: ['Nessun effetto fuori transazione']
   }),
@@ -686,9 +686,9 @@ const base = [
     category: 'Function',
     syntax: "JSON_EXTRACT(col, '$.path')",
     description: 'Estrae valore da JSON (SQLite JSON1).',
-    sqlite: "SELECT JSON_EXTRACT(metadata, '$.cart_size') FROM events WHERE event_type='add_to_cart' LIMIT 10;",
-    postgresql: "SELECT metadata->>'cart_size' FROM events WHERE event_type='add_to_cart' LIMIT 10;",
-    sqlserver: "SELECT JSON_VALUE(metadata, '$.cart_size') FROM events WHERE event_type='add_to_cart';",
+    sqlite: "SELECT JSON_EXTRACT(json_object('cart_size', (event_id % 4) + 1), '$.cart_size') AS cart_size\nFROM events\nWHERE event_type='add_to_cart'\nLIMIT 10;",
+    postgresql: "SELECT (json_build_object('cart_size', (event_id % 4) + 1)->>'cart_size')::int AS cart_size\nFROM events\nWHERE event_type='add_to_cart'\nLIMIT 10;",
+    sqlserver: "SELECT CAST(JSON_VALUE(JSON_OBJECT('cart_size': event_id % 4 + 1), '$.cart_size') AS int) AS cart_size\nFROM events\nWHERE event_type='add_to_cart';",
     useCases: ['Eventi semi-strutturati', 'Logs'],
     pitfalls: ['Indici su JSON richiedono strategie dedicate']
   }),
@@ -807,9 +807,9 @@ const extras = [
     category: 'Filter',
     syntax: "col LIKE 'pattern' ESCAPE '\\\\'",
     description: 'Gestisce caratteri speciali in pattern LIKE.',
-    sqlite: "SELECT name FROM customers WHERE name LIKE 'Customer\\_%' ESCAPE '\\\\' LIMIT 5;",
-    postgresql: "SELECT name FROM customers WHERE name LIKE 'Customer\\_%' ESCAPE '\\\\' LIMIT 5;",
-    sqlserver: "SELECT TOP 5 name FROM customers WHERE name LIKE 'Customer\\_%' ESCAPE '\\\\';",
+    sqlite: "SELECT name FROM customers WHERE name LIKE 'Customer$_%' ESCAPE '$' LIMIT 5;",
+    postgresql: "SELECT name FROM customers WHERE name LIKE 'Customer$_%' ESCAPE '$' LIMIT 5;",
+    sqlserver: "SELECT TOP 5 name FROM customers WHERE name LIKE 'Customer$_%' ESCAPE '$';",
     useCases: ['Cerca valori contenenti _ o % letterali'],
     pitfalls: ['Ricordare escape double in stringhe']
   }),

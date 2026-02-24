@@ -1,5 +1,5 @@
 <!doctype html>
-<html lang="en">
+<html lang="it">
 <head>
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width,initial-scale=1">
@@ -16,12 +16,12 @@
 
   <header class="site-header">
     <div class="header-inner">
-      <a href="index.html" class="brand">SQL Explorer</a>
+      <a href="index.html" class="brand">SQL Lab Completo</a>
       <nav class="top-nav">
         <a href="playground.html">Playground</a>
         <a href="database.html">Database</a>
         <a href="exercises.html">Exercises</a>
-        <a href="guided.html">Guided</a>
+        <a href="guided.html">Percorso</a>
         <a href="trainer.html">Trainer</a>
         <a href="keyword.html">Keyword</a>
         <a href="syntax.html">Sintassi</a>
@@ -34,6 +34,7 @@
       <h1>Keyword Catalog</h1>
       <div class="keyword-toolbar">
         <input id="kwSearch" placeholder="Search keyword">
+        <select id="kwCategory"></select>
         <select id="kwDialect">
           <option value="all">All</option>
           <option value="sqlite">SQLite</option>
@@ -42,6 +43,7 @@
         </select>
         <span id="kwCount" class="keyword-count"></span>
       </div>
+      <p id="kwLive" class="sr-only" aria-live="polite"></p>
       <div id="kwList" class="keyword-list"></div>
     </section>
   </main>

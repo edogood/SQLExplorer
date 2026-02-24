@@ -45,3 +45,14 @@ test('keyword try in playground link works', async ({ page }) => {
   await page.goto(`${BASE}/${href}`);
   await expect(page.locator('#dbStatus')).toContainText(/query eseguita|database pronto/i);
 });
+
+test('non-sqlite deep link requires manual run and shows banner', async ({ page }) => {
+  const query = 'SELECT 1 AS check_val;';
+  const target = `${BASE}/playground.html?q=${encodeURIComponent(query)}&dialect=postgresql&autorun=1`;
+  await page.goto(target);
+  await expect(page.locator('#dbStatus')).toContainText(/Dialetto non eseguibile|pronto/i);
+  await expect(page.locator('#dialectNotice')).toBeVisible();
+  await expect(page.locator('#resultContainer')).not.toContainText('check_val');
+  await page.click('#runQueryBtn');
+  await expect(page.locator('#resultContainer')).toContainText('check_val');
+});

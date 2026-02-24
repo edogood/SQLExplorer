@@ -10,7 +10,7 @@ export function escapeHtml(value) {
 export function createElement(tag, { className = '', text = '', attrs = {} } = {}, children = []) {
   const el = document.createElement(tag);
   if (className) el.className = className;
-  if (text) el.textContent = text;
+  if (text !== undefined && text !== null) el.textContent = text;
   Object.entries(attrs).forEach(([k, v]) => {
     if (v !== undefined && v !== null) el.setAttribute(k, v);
   });
@@ -20,13 +20,14 @@ export function createElement(tag, { className = '', text = '', attrs = {} } = {
 
 export function renderTable(container, data) {
   if (!container) return;
-  container.innerHTML = '';
+  clear(container);
   if (!data || !data.columns || !data.columns.length) {
     container.appendChild(createElement('p', { className: 'muted', text: 'Nessun dato' }));
     return;
   }
 
-  const table = createElement('table', { className: 'sql-table' });
+  const wrapper = createElement('div', { className: 'table-wrap' });
+  const table = createElement('table', { className: 'sql-table data-table' });
   const thead = createElement('thead');
   const headRow = createElement('tr');
   data.columns.forEach((col) => {
@@ -43,7 +44,8 @@ export function renderTable(container, data) {
 
   table.appendChild(thead);
   table.appendChild(tbody);
-  container.appendChild(table);
+  wrapper.appendChild(table);
+  container.appendChild(wrapper);
 }
 
 export function clear(el) {

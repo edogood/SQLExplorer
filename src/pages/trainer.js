@@ -1,6 +1,6 @@
 import { TRAINER_CHALLENGES } from '../data/trainer-data.js';
 import { buildPlaygroundUrl } from '../ui/links.js';
-import { escapeHtml } from '../ui/dom.js';
+import { createElement } from '../ui/dom.js';
 
 export function normalizeValue(v) {
   if (v === null || v === undefined) return null;
@@ -35,16 +35,16 @@ function cacheDom() {
 
 function render() {
   if (!dom.list) return;
-  dom.list.innerHTML = TRAINER_CHALLENGES.map((c) => {
-    const url = buildPlaygroundUrl({ query: c.query, autorun: true });
-    return `
-      <article class="keyword-card">
-        <h3>${escapeHtml(c.name)}</h3>
-        <p class="muted">${escapeHtml(c.description || '')}</p>
-        <a class="btn btn-primary" href="${url}">Try in Playground</a>
-      </article>
-    `;
-  }).join('');
+  dom.list.replaceChildren();
+  TRAINER_CHALLENGES.forEach((c) => {
+    const url = buildPlaygroundUrl({ query: c.query, autorun: true, sqliteSafe: true });
+    const card = createElement('article', { className: 'keyword-card' }, [
+      createElement('h3', { text: c.name }),
+      createElement('p', { className: 'muted', text: c.description || '' }),
+      createElement('a', { className: 'btn btn-primary', text: 'Try in Playground', attrs: { href: url } })
+    ]);
+    dom.list.appendChild(card);
+  });
   if (dom.count) dom.count.textContent = `${TRAINER_CHALLENGES.length} challenge`;
 }
 

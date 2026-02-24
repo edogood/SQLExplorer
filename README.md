@@ -17,6 +17,10 @@
   - `scroll-margin-top` per evitare che anchor/focus finiscano sotto header sticky.
   - focus indicator rinforzato con `:focus-visible`.
 
+## Architettura unica
+- Le pagine HTML caricano solo gli script modulari in `src/pages/*.js` con `type="module"`.
+- I vecchi file `*-page.js` non vengono più usati: ogni modifica passa dall'entrypoint in `src/`.
+
 ## Come testare manualmente
 1. Apri `index.html`: la home deve essere snella (senza tutte le sezioni del lab insieme).
 2. Apri `syntax.html`, cerca un topic e usa `Apri nel Playground`:
@@ -29,6 +33,13 @@
 4. In `syntax.html` verifica accessibilità:
    - la ricerca annuncia risultati/no match in live region;
    - aprendo un permalink `#topic` il target non resta nascosto dal header.
+
+## Aggiungere contenuti e validarli
+- Keyword: aggiungi o modifica le voci in `src/data/keyword-entries.js` (usa `examples.sqlite`).
+- Sintassi: aggiorna `src/data/syntax-topics.js` con snippet SQLite nel campo `snippets.sqlite`.
+- Percorso guidato: modifica `starter.sqlite` in `src/data/guided-data.js`.
+- Trainer: aggiorna le query in `src/data/trainer-data.js`.
+- Esegui `npm run validate:snippets` per verificare che tutti gli snippet SQLite compilino sul database demo (usa `createDemoDb`).
 
 ## Limiti noti
 - Il core runtime resta su `sql.js` (SQLite in browser): il dialetto è didattico e non cambia l'engine.

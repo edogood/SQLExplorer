@@ -1,6 +1,5 @@
 import { KEYWORD_ENTRIES } from '../data/keyword-entries.js';
 import { buildPlaygroundUrl } from '../ui/links.js';
-import { escapeHtml } from '../ui/dom.js';
 
 const dom = {};
 
@@ -28,6 +27,111 @@ function ensureCategoryOptions() {
   uniqueCategories().forEach((c) => dom.category.appendChild(new Option(c, c)));
 }
 
+function renderList(entries, dialect) {
+  if (!dom.list) return;
+  dom.list.replaceChildren();
+  if (!entries.length) {
+    const empty = document.createElement('p');
+    empty.className = 'info-block';
+    empty.textContent = 'Nessuna keyword trovata.';
+    dom.list.appendChild(empty);
+    return;
+  }
+
+  entries.forEach((k) => {
+    const article = document.createElement('article');
+    article.className = 'keyword-card';
+
+    const title = document.createElement('h3');
+    title.textContent = k.keyword;
+    article.appendChild(title);
+
+    const desc = document.createElement('p');
+    desc.className = 'muted';
+    desc.textContent = k.description || k.syntax || '';
+    article.appendChild(desc);
+
+    const example = (k.examples && (k.examples[dialect] || k.examples.sqlite)) || k.engineExample || '';
+    const pre = document.createElement('pre');
+    pre.textContent = example;
+    article.appendChild(pre);
+
+    const meta = document.createElement('div');
+    meta.className = 'keyword-meta';
+    const category = document.createElement('span');
+    category.textContent = k.category || '';
+    meta.appendChild(category);
+    article.appendChild(meta);
+
+    const actions = document.createElement('div');
+    actions.className = 'keyword-actions';
+    const url = buildPlaygroundUrl({
+      dialect,
+      query: example,
+      autorun: true,
+      sqliteSafe: dialect === 'sqlite'
+    });
+    const link = document.createElement('a');
+    link.className = 'btn btn-primary';
+    link.href = url;
+    link.textContent = 'Try in Playground';
+    actions.appendChild(link);
+    article.appendChild(actions);
+
+    if (k.useCases && k.useCases.length) {
+      const heading = document.createElement('h4');
+      heading.className = 'keyword-subtitle';
+      heading.textContent = 'Use case';
+      article.appendChild(heading);
+      const list = document.createElement('ul');
+      list.className = 'keyword-points';
+      k.useCases.forEach((u) => {
+        const li = document.createElement('li');
+        li.textContent = u;
+        list.appendChild(li);
+      });
+      article.appendChild(list);
+    }
+
+    if (k.pitfalls && k.pitfalls.length) {
+      const heading = document.createElement('h4');
+      heading.className = 'keyword-subtitle';
+      heading.textContent = 'Pitfall';
+      article.appendChild(heading);
+      const list = document.createElement('ul');
+      list.className = 'keyword-points';
+      k.pitfalls.forEach((p) => {
+        const li = document.createElement('li');
+        li.textContent = p;
+        list.appendChild(li);
+      });
+      article.appendChild(list);
+    }
+
+    if (k.dialectNotes && Object.keys(k.dialectNotes).length) {
+      const heading = document.createElement('h4');
+      heading.className = 'keyword-subtitle';
+      heading.textContent = 'Note dialetto';
+      article.appendChild(heading);
+      const list = document.createElement('ul');
+      list.className = 'keyword-points';
+      Object.entries(k.dialectNotes).forEach(([d, note]) => {
+        const li = document.createElement('li');
+        const strong = document.createElement('strong');
+        strong.textContent = `${d}: `;
+        li.appendChild(strong);
+        const span = document.createElement('span');
+        span.textContent = note;
+        li.appendChild(span);
+        list.appendChild(li);
+      });
+      article.appendChild(list);
+    }
+
+    dom.list.appendChild(article);
+  });
+}
+
 function render() {
   if (!dom.list) return;
   const term = (dom.search?.value || '').toLowerCase();
@@ -53,31 +157,8 @@ function render() {
   dom.count && (dom.count.textContent = `${filtered.length} keyword`);
   announce(`${filtered.length} keyword trovate`);
 
-  dom.list.innerHTML = filtered.map((k) => {
-    const example = (k.examples && (k.examples[dialect] || k.examples.sqlite)) || k.engineExample || '';
-    const useCases = (k.useCases || []).map((u) => `<li>${escapeHtml(u)}</li>`).join('');
-    const pitfalls = (k.pitfalls || []).map((p) => `<li>${escapeHtml(p)}</li>`).join('');
-    const dialectNotes = k.dialectNotes ? Object.entries(k.dialectNotes).map(
-      ([d, note]) => `<li><strong>${escapeHtml(d)}:</strong> ${escapeHtml(note)}</li>`
-    ).join('') : '';
-    const url = buildPlaygroundUrl({ dialect: dialect === 'all' ? 'sqlite' : dialect, query: example, autorun: true });
-    return `
-      <article class="keyword-card">
-        <h3>${escapeHtml(k.keyword)}</h3>
-        <p class="muted">${escapeHtml(k.description || k.syntax || '')}</p>
-        <pre>${escapeHtml(example)}</pre>
-        <div class="keyword-meta">
-          <span>${escapeHtml(k.category || '')}</span>
-        </div>
-        <div class="keyword-actions">
-          <a class="btn btn-primary" href="${url}">Try in Playground</a>
-        </div>
-        ${useCases ? `<h4 class="keyword-subtitle">Use case</h4><ul class="keyword-points">${useCases}</ul>` : ''}
-        ${pitfalls ? `<h4 class="keyword-subtitle">Pitfall</h4><ul class="keyword-points">${pitfalls}</ul>` : ''}
-        ${dialectNotes ? `<h4 class="keyword-subtitle">Note dialetto</h4><ul class="keyword-points">${dialectNotes}</ul>` : ''}
-      </article>
-    `;
-  }).join('');
+  const targetDialect = dialect === 'all' ? 'sqlite' : dialect;
+  renderList(filtered, targetDialect);
 }
 
 document.addEventListener('DOMContentLoaded', () => {

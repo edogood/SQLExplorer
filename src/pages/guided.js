@@ -1,7 +1,7 @@
 import { createEngine } from '../core/engine.js';
 import { GUIDED_STEPS } from '../data/guided-data.js';
 import { buildPlaygroundUrl } from '../ui/links.js';
-import { escapeHtml, renderTable } from '../ui/dom.js';
+import { createElement, renderTable, clear } from '../ui/dom.js';
 import { showToast } from '../ui/toast.js';
 
 const dom = {};
@@ -13,13 +13,15 @@ function cacheDom() {
   dom.list = document.getElementById('guidedList');
   dom.count = document.getElementById('guidedCount');
   dom.reset = document.getElementById('resetProgressBtn');
+  dom.resume = document.getElementById('resumeProgressBtn');
 }
 
 function loadProgress() {
   try {
-    return JSON.parse(localStorage.getItem(progressKey)) || { completed: {} };
+    const data = JSON.parse(localStorage.getItem(progressKey)) || { completed: {} };
+    return { completed: data.completed || {}, lastStep: data.lastStep || null };
   } catch (e) {
-    return { completed: {} };
+    return { completed: {}, lastStep: null };
   }
 }
 
@@ -59,43 +61,82 @@ function renderProgress() {
   const progress = loadProgress();
   const completed = Object.keys(progress.completed || {}).length;
   if (dom.count) dom.count.textContent = `${completed}/${GUIDED_STEPS.length} completati`;
+  if (dom.resume) dom.resume.disabled = GUIDED_STEPS.length === 0;
+}
+
+function createBadge(text, className = 'badge') {
+  return createElement('span', { className, text });
 }
 
 function renderStep(step, idx, state) {
-  const url = buildPlaygroundUrl({ dialect: 'sqlite', query: step.starter?.sqlite || step.solution?.sqlite || '', autorun: true });
+  const url = buildPlaygroundUrl({
+    dialect: 'sqlite',
+    query: step.starter?.sqlite || step.solution?.sqlite || '',
+    autorun: true,
+    sqliteSafe: true
+  });
   const status = state?.completed[step.id];
-  const badge = status ? `<span class="badge success">Completato</span>` : `<span class="badge neutral">Da fare</span>`;
-  const topics = (step.topics || []).map((t) => `<span class="badge neutral">${escapeHtml(t)}</span>`).join(' ');
-  return `
-    <article class="keyword-card" data-step="${step.id}">
-      <div class="card-head">
-        <h3>${escapeHtml(step.title || `Step ${idx + 1}`)}</h3>
-        <div class="card-meta">
-          <span class="badge">${escapeHtml(step.level || '')}</span>
-          ${badge}
-        </div>
-      </div>
-      <p class="muted">${escapeHtml(step.goal || '')}</p>
-      ${step.hint ? `<p><strong>Hint:</strong> ${escapeHtml(step.hint)}</p>` : ''}
-      <div class="keyword-points">${topics}</div>
-      <textarea class="guided-editor" data-editor="${step.id}" rows="7" spellcheck="false">${step.starter?.sqlite || ''}</textarea>
-      <div class="controls-row">
-        <button class="btn btn-primary" type="button" data-run="${step.id}">Esegui &amp; verifica</button>
-        <a class="btn btn-secondary" href="${url}">Apri nel Playground</a>
-        <button class="btn btn-secondary" type="button" data-solution="${step.id}">Mostra soluzione</button>
-      </div>
-      <div class="result-container" data-result="${step.id}"><p class="placeholder">Esegui per vedere output.</p></div>
-      <div class="result-container" data-solution-block="${step.id}" hidden>
-        <pre>${escapeHtml(step.solution?.sqlite || '')}</pre>
-      </div>
-    </article>
-  `;
+
+  const article = createElement('article', { className: 'keyword-card', attrs: { 'data-step': step.id, tabindex: '-1' } });
+  const head = createElement('div', { className: 'card-head' });
+  const title = createElement('h3', { text: step.title || `Step ${idx + 1}` });
+  const meta = createElement('div', { className: 'card-meta' }, [
+    createBadge(step.level || '', 'badge'),
+    createBadge(status ? 'Completato' : 'Da fare', status ? 'badge success' : 'badge neutral')
+  ]);
+  head.appendChild(title);
+  head.appendChild(meta);
+  article.appendChild(head);
+
+  const goal = createElement('p', { className: 'muted', text: step.goal || '' });
+  article.appendChild(goal);
+
+  if (step.hint) {
+    const hint = createElement('p');
+    const strong = createElement('strong', { text: 'Hint: ' });
+    hint.appendChild(strong);
+    hint.appendChild(document.createTextNode(step.hint));
+    article.appendChild(hint);
+  }
+
+  const topicsWrap = createElement('div', { className: 'keyword-points' });
+  (step.topics || []).forEach((t) => topicsWrap.appendChild(createBadge(t, 'badge neutral')));
+  article.appendChild(topicsWrap);
+
+  const editor = createElement('textarea', {
+    className: 'guided-editor',
+    attrs: { 'data-editor': step.id, rows: '7', spellcheck: 'false' }
+  });
+  editor.value = step.starter?.sqlite || '';
+  article.appendChild(editor);
+
+  const controls = createElement('div', { className: 'controls-row' });
+  const runBtn = createElement('button', { className: 'btn btn-primary', text: 'Esegui e verifica', attrs: { type: 'button', 'data-run': step.id } });
+  const openBtn = createElement('a', { className: 'btn btn-secondary', text: 'Apri nel Playground', attrs: { href: url } });
+  const solutionBtn = createElement('button', { className: 'btn btn-secondary', text: 'Mostra soluzione', attrs: { type: 'button', 'data-solution': step.id } });
+  controls.appendChild(runBtn);
+  controls.appendChild(openBtn);
+  controls.appendChild(solutionBtn);
+  article.appendChild(controls);
+
+  const resultBox = createElement('div', { className: 'result-container', attrs: { 'data-result': step.id } }, [
+    createElement('p', { className: 'placeholder', text: 'Esegui per vedere output.' })
+  ]);
+  article.appendChild(resultBox);
+
+  const solutionBox = createElement('div', { className: 'result-container', attrs: { 'data-solution-block': step.id, hidden: '' } });
+  const solutionPre = createElement('pre');
+  solutionPre.textContent = step.solution?.sqlite || '';
+  solutionBox.appendChild(solutionPre);
+  article.appendChild(solutionBox);
+
+  return article;
 }
 
 function render() {
   if (!dom.list) return;
   const state = loadProgress();
-  dom.list.innerHTML = GUIDED_STEPS.map((s, idx) => renderStep(s, idx, state)).join('');
+  dom.list.replaceChildren(...GUIDED_STEPS.map((s, idx) => renderStep(s, idx, state)));
   renderProgress();
 }
 
@@ -120,6 +161,9 @@ async function handleRun(stepId) {
     showToast('Inserisci una query da eseguire');
     return;
   }
+  const progress = loadProgress();
+  progress.lastStep = stepId;
+  saveProgress(progress);
   try {
     const expected = await ensureExpected(step);
     const { result } = await engine.execute(sql);
@@ -127,7 +171,6 @@ async function handleRun(stepId) {
     renderTable(resultBox, { columns: first.columns || [], rows: first.values || [] });
     const sig = await hashRows({ columns: first.columns || [], rows: first.values || [] }, step.ignoreOrder);
     const ok = expected === sig;
-    const progress = loadProgress();
     progress.completed = progress.completed || {};
     progress.completed[stepId] = { ts: Date.now(), attempts: (progress.completed[stepId]?.attempts || 0) + 1, ok };
     if (!ok) delete progress.completed[stepId];
@@ -136,7 +179,11 @@ async function handleRun(stepId) {
     renderProgress();
     showToast(ok ? 'Verifica superata!' : 'Output diverso dall\'atteso.');
   } catch (err) {
-    resultBox.innerHTML = `<pre class="error-block">${escapeHtml(err.message || String(err))}</pre>`;
+    clear(resultBox);
+    const pre = document.createElement('pre');
+    pre.className = 'error-block';
+    pre.textContent = err.message || String(err);
+    resultBox.appendChild(pre);
     showToast('Errore durante l\'esecuzione');
   }
 }
@@ -144,6 +191,22 @@ async function handleRun(stepId) {
 function handleSolutionToggle(stepId) {
   const block = dom.list.querySelector(`[data-solution-block="${stepId}"]`);
   if (block) block.hidden = !block.hidden;
+  const progress = loadProgress();
+  progress.lastStep = stepId;
+  saveProgress(progress);
+}
+
+function resumeStep() {
+  const state = loadProgress();
+  const hasLast = state.lastStep && GUIDED_STEPS.find((s) => s.id === state.lastStep);
+  const fallback = GUIDED_STEPS.find((s) => !state.completed?.[s.id]) || GUIDED_STEPS[0];
+  const targetId = hasLast ? state.lastStep : fallback?.id;
+  if (!targetId) return;
+  const card = dom.list?.querySelector(`[data-step="${targetId}"]`);
+  if (card) {
+    card.focus({ preventScroll: true });
+    card.scrollIntoView({ behavior: 'smooth', block: 'start' });
+  }
 }
 
 function wireEvents() {
@@ -159,6 +222,9 @@ function wireEvents() {
       render();
       showToast('Progress azzerato');
     });
+  }
+  if (dom.resume) {
+    dom.resume.addEventListener('click', resumeStep);
   }
 }
 

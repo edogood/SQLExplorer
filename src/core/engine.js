@@ -18,7 +18,7 @@ function safeTableName(name) {
   return sanitized || 'temp';
 }
 
-function createDemoDb(SQL) {
+export function createDemoDb(SQL) {
   const db = new SQL.Database();
   db.exec(`
     PRAGMA foreign_keys = ON;

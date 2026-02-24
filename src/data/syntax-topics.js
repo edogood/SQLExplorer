@@ -4,9 +4,9 @@ export const SYNTAX_TOPICS = [
     summary: 'Definizione schema base per fatti ordini e dimensioni clienti/date.',
     args: ['CREATE TABLE', 'PRIMARY KEY', 'FOREIGN KEY', 'CHECK'],
     snippets: {
-      sqlite: "CREATE TABLE fact_orders (\n  order_id INTEGER PRIMARY KEY,\n  date TEXT REFERENCES dim_date(date),\n  customer_id INTEGER REFERENCES customers(id),\n  total_amount REAL CHECK(total_amount >= 0),\n  status TEXT,\n  channel TEXT\n);",
-      postgresql: "CREATE TABLE fact_orders (\n  order_id INTEGER PRIMARY KEY,\n  date date REFERENCES dim_date(date),\n  customer_id INTEGER REFERENCES customers(id),\n  total_amount numeric CHECK(total_amount >= 0),\n  status text,\n  channel text\n);",
-      sqlserver: "CREATE TABLE fact_orders (\n  order_id INT PRIMARY KEY,\n  [date] DATE FOREIGN KEY REFERENCES dim_date([date]),\n  customer_id INT FOREIGN KEY REFERENCES customers(id),\n  total_amount DECIMAL(18,2) CHECK (total_amount >= 0),\n  status NVARCHAR(50),\n  channel NVARCHAR(50)\n);"
+      sqlite: "CREATE TABLE IF NOT EXISTS fact_orders_demo (\n  order_id INTEGER PRIMARY KEY,\n  date TEXT REFERENCES dim_date(date),\n  customer_id INTEGER REFERENCES customers(id),\n  total_amount REAL CHECK(total_amount >= 0),\n  status TEXT,\n  channel TEXT\n);",
+      postgresql: "CREATE TABLE IF NOT EXISTS fact_orders_demo (\n  order_id INTEGER PRIMARY KEY,\n  date date REFERENCES dim_date(date),\n  customer_id INTEGER REFERENCES customers(id),\n  total_amount numeric CHECK(total_amount >= 0),\n  status text,\n  channel text\n);",
+      sqlserver: "IF NOT EXISTS (SELECT 1 FROM sys.tables WHERE name='fact_orders_demo')\nCREATE TABLE fact_orders_demo (\n  order_id INT PRIMARY KEY,\n  [date] DATE FOREIGN KEY REFERENCES dim_date([date]),\n  customer_id INT FOREIGN KEY REFERENCES customers(id),\n  total_amount DECIMAL(18,2) CHECK (total_amount >= 0),\n  status NVARCHAR(50),\n  channel NVARCHAR(50)\n);"
     },
     attention: ['Usa tipi coerenti tra fatto e dimensioni', 'CHECK previene numeri negativi', 'FK richiede indici sulle chiavi referenziate']
   },
@@ -59,7 +59,7 @@ export const SYNTAX_TOPICS = [
     summary: 'Estrai le prime N righe per partizione ordinata.',
     args: ['ROW_NUMBER()', 'PARTITION BY', 'ORDER BY', 'filtra su rn'],
     snippets: {
-      sqlite: "WITH ranked AS (\n  SELECT customer_id, order_id, total_amount,\n         ROW_NUMBER() OVER(PARTITION BY customer_id ORDER BY total_amount DESC) AS rn\n  FROM orders\n  WHERE status IN ('PAID','SHIPPED')\n)\nSELECT * FROM ranked WHERE rn <= 3;",
+      sqlite: "WITH ranked AS (\n  SELECT customer_id, id AS order_id, total_amount,\n         ROW_NUMBER() OVER(PARTITION BY customer_id ORDER BY total_amount DESC) AS rn\n  FROM orders\n  WHERE status IN ('PAID','SHIPPED')\n)\nSELECT * FROM ranked WHERE rn <= 3;",
       postgresql: "WITH ranked AS (\n  SELECT customer_id, id AS order_id, total_amount,\n         ROW_NUMBER() OVER(PARTITION BY customer_id ORDER BY total_amount DESC) AS rn\n  FROM orders\n  WHERE status IN ('PAID','SHIPPED')\n)\nSELECT * FROM ranked WHERE rn <= 3;",
       sqlserver: "WITH ranked AS (\n  SELECT customer_id, id AS order_id, total_amount,\n         ROW_NUMBER() OVER(PARTITION BY customer_id ORDER BY total_amount DESC) AS rn\n  FROM orders\n  WHERE status IN ('PAID','SHIPPED')\n)\nSELECT * FROM ranked WHERE rn <= 3;"
     },
@@ -158,7 +158,7 @@ export const SYNTAX_TOPICS = [
     summary: 'Trova valori estremi con z-score semplice.',
     args: ['AVG', 'STDDEV', 'CASE outlier'],
     snippets: {
-      sqlite: "WITH stats AS (\n  SELECT AVG(total_amount) AS avg_amt, printf('%.4f', sqrt(AVG((total_amount - AVG(total_amount))*(total_amount - AVG(total_amount))))) AS std\n  FROM orders\n  WHERE total_amount IS NOT NULL\n)\nSELECT o.id, o.total_amount\nFROM orders o, stats s\nWHERE o.total_amount > s.avg_amt + 3*s.std;",
+      sqlite: "WITH base AS (\n  SELECT total_amount FROM orders WHERE total_amount IS NOT NULL\n), avg_calc AS (\n  SELECT AVG(total_amount) AS avg_amt FROM base\n), stats AS (\n  SELECT a.avg_amt, sqrt(AVG((b.total_amount - a.avg_amt)*(b.total_amount - a.avg_amt))) AS std\n  FROM base b CROSS JOIN avg_calc a\n)\nSELECT o.id, o.total_amount\nFROM orders o CROSS JOIN stats s\nWHERE o.total_amount > s.avg_amt + 3*s.std;",
       postgresql: "WITH stats AS (\n  SELECT AVG(total_amount) AS avg_amt, STDDEV_POP(total_amount) AS std FROM orders WHERE total_amount IS NOT NULL\n)\nSELECT o.id, o.total_amount\nFROM orders o, stats s\nWHERE o.total_amount > s.avg_amt + 3*s.std;",
       sqlserver: "WITH stats AS (\n  SELECT AVG(total_amount) AS avg_amt, STDEV(total_amount) AS std FROM orders WHERE total_amount IS NOT NULL\n)\nSELECT o.id, o.total_amount\nFROM orders o, stats s\nWHERE o.total_amount > s.avg_amt + 3*s.std;"
     },
@@ -279,9 +279,9 @@ export const SYNTAX_TOPICS = [
     summary: 'Estrarre e filtrare eventi basati su campo JSON.',
     args: ['JSON_EXTRACT/JSON_VALUE', 'WHERE su valore estratto'],
     snippets: {
-      sqlite: "SELECT event_id, JSON_EXTRACT(metadata, '$.cart_size') AS cart_size\nFROM events\nWHERE event_type='add_to_cart' AND JSON_EXTRACT(metadata, '$.cart_size') >= 1;",
-      postgresql: "SELECT event_id, metadata->>'cart_size' AS cart_size\nFROM events\nWHERE event_type='add_to_cart' AND (metadata->>'cart_size')::int >= 1;",
-      sqlserver: "SELECT event_id, JSON_VALUE(metadata, '$.cart_size') AS cart_size\nFROM events\nWHERE event_type='add_to_cart' AND TRY_CAST(JSON_VALUE(metadata, '$.cart_size') AS int) >= 1;"
+      sqlite: "SELECT event_id,\n       JSON_EXTRACT(json_object('cart_size', (event_id % 4) + 1), '$.cart_size') AS cart_size\nFROM events\nWHERE event_type='add_to_cart'\n  AND JSON_EXTRACT(json_object('cart_size', (event_id % 4) + 1), '$.cart_size') >= 1;",
+      postgresql: "SELECT event_id,\n       (json_build_object('cart_size', (event_id % 4) + 1)->>'cart_size')::int AS cart_size\nFROM events\nWHERE event_type='add_to_cart'\n  AND (json_build_object('cart_size', (event_id % 4) + 1)->>'cart_size')::int >= 1;",
+      sqlserver: "SELECT event_id,\n       TRY_CAST(JSON_VALUE(JSON_QUERY('{\"cart_size\": ' + CAST((event_id % 4) + 1 AS varchar(10)) + '}'), '$.cart_size') AS int) AS cart_size\nFROM events\nWHERE event_type='add_to_cart'\n  AND TRY_CAST(JSON_VALUE(JSON_QUERY('{\"cart_size\": ' + CAST((event_id % 4) + 1 AS varchar(10)) + '}'), '$.cart_size') AS int) >= 1;"
     },
     attention: ['Tipizzare il campo JSON per confronti numerici', 'Indici JSON richiedono strategie dedicate']
   },

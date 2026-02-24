@@ -1,6 +1,6 @@
 import { EXERCISES } from '../data/exercises-data.js';
 import { buildPlaygroundUrl } from '../ui/links.js';
-import { escapeHtml } from '../ui/dom.js';
+import { createElement } from '../ui/dom.js';
 
 const dom = {};
 
@@ -31,16 +31,16 @@ function render() {
     return termOk && topicOk && diffOk;
   });
   if (dom.count) dom.count.textContent = `${filtered.length} esercizi`;
-  dom.list.innerHTML = filtered.map((x) => {
-    const url = buildPlaygroundUrl({ query: x.query, autorun: true });
-    return `
-      <article class="keyword-card">
-        <h3>${escapeHtml(x.title)}</h3>
-        <p>${escapeHtml(x.topic)} · ${escapeHtml(x.difficulty)}</p>
-        <a class="btn btn-primary" href="${url}">Try in Playground</a>
-      </article>
-    `;
-  }).join('');
+  dom.list.replaceChildren();
+  filtered.forEach((x) => {
+    const url = buildPlaygroundUrl({ query: x.query, autorun: true, sqliteSafe: true });
+    const card = createElement('article', { className: 'keyword-card' }, [
+      createElement('h3', { text: x.title }),
+      createElement('p', { text: `${x.topic} · ${x.difficulty}` }),
+      createElement('a', { className: 'btn btn-primary', text: 'Try in Playground', attrs: { href: url } })
+    ]);
+    dom.list.appendChild(card);
+  });
 }
 
 document.addEventListener('DOMContentLoaded', () => {
