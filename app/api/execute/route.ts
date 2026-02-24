@@ -1,4 +1,5 @@
 import { NextRequest, NextResponse } from 'next/server';
+import type { QueryResult } from 'pg';
 import { getPool } from '@/lib/db';
 import { guardAndPrepareSql } from '@/lib/queryGuard';
 import { cleanupExpiredSchemas, ensureAppSchema, extendSessionTtl, requireActiveSession } from '@/lib/session';
