@@ -43,6 +43,7 @@ function render() {
   });
 }
 
+if (typeof document !== 'undefined') {
 document.addEventListener('DOMContentLoaded', () => {
   cacheDom();
   populateFilters();
@@ -51,3 +52,5 @@ document.addEventListener('DOMContentLoaded', () => {
   dom.difficulty?.addEventListener('change', render);
   render();
 });
+
+}

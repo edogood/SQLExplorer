@@ -34,7 +34,10 @@ function render() {
   if (dom.count) dom.count.textContent = `${TRAINER_CHALLENGES.length} challenge`;
 }
 
+if (typeof document !== 'undefined') {
 document.addEventListener('DOMContentLoaded', () => {
   cacheDom();
   render();
 });
+
+}

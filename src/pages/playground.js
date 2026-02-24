@@ -261,6 +261,7 @@ function renderSidebar() {
   });
 }
 
+if (typeof document !== 'undefined') {
 document.addEventListener('DOMContentLoaded', async () => {
   cacheDom();
   const params = parsePlaygroundParams();
@@ -301,3 +302,5 @@ document.addEventListener('DOMContentLoaded', async () => {
     runQuery();
   }
 });
+
+}

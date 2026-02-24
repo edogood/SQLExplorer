@@ -149,6 +149,7 @@ function wireEvents() {
   if (dom.resetBtn) dom.resetBtn.addEventListener('click', resetDemo);
 }
 
+if (typeof document !== 'undefined') {
 document.addEventListener('DOMContentLoaded', async () => {
   cacheDom();
   setStatus('Caricamento database...');
@@ -157,3 +158,5 @@ document.addEventListener('DOMContentLoaded', async () => {
   setStatus('Database pronto');
   wireEvents();
 });
+
+}

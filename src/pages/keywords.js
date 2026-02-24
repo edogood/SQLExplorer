@@ -88,6 +88,7 @@ function render() {
   renderList(filtered, dialect === 'all' ? 'sqlite' : dialect);
 }
 
+if (typeof document !== 'undefined') {
 document.addEventListener('DOMContentLoaded', () => {
   cacheDom();
   ensureCategoryOptions();
@@ -96,3 +97,5 @@ document.addEventListener('DOMContentLoaded', () => {
   dom.category?.addEventListener('change', render);
   render();
 });
+
+}

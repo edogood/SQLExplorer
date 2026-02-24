@@ -172,6 +172,7 @@ function handleActions(event) {
   copyToClipboard(snippet);
 }
 
+if (typeof document !== 'undefined') {
 document.addEventListener('DOMContentLoaded', () => {
   cacheDom();
   dom.search?.addEventListener('input', render);
@@ -180,3 +181,5 @@ document.addEventListener('DOMContentLoaded', () => {
   render();
   window.addEventListener('hashchange', focusAnchorIfPresent);
 });
+
+}
