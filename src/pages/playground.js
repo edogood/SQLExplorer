@@ -1,13 +1,11 @@
-import { createEngine } from '../core/engine.js';
+import { createEngine } from '../../db-core.js';
 import { parsePlaygroundParams } from '../ui/links.js';
 import { escapeHtml, renderTable } from '../ui/dom.js';
 import { DEFAULT_QUERY, DIALECT_DEFAULT_QUERIES, DIALECTS } from '../data/dialects.js';
 import { showToast } from '../ui/toast.js';
-import { createErd } from '../ui/erd.js';
 
 const dom = {};
 let engine = null;
-let erd = null;
 let schemaSnapshot = null;
 const HISTORY_KEY = 'sql_history';
 const DATASET_LABEL = 'Dataset: Demo e-commerce';
@@ -210,48 +208,15 @@ function cacheDom() {
   dom.datasetBadge = document.getElementById('datasetBadge');
   dom.dialectNotice = document.getElementById('dialectNotice');
   dom.execSql = document.getElementById('executedSqlText');
-  dom.erd = document.getElementById('playgroundErd');
-  dom.erdSelect = document.getElementById('erdTableSelect');
-  dom.erdPreview = document.getElementById('erdTablePreview');
-  dom.erdTemplates = document.getElementById('erdTemplateQueries');
   dom.schemaSidebar = document.getElementById('schemaSidebar');
   dom.historyList = document.getElementById('historyList');
   dom.plan = document.getElementById('planContainer');
   dom.explainBtn = document.getElementById('explainBtn');
 }
 
-function populateErdSelect(tables) {
-  if (!dom.erdSelect) return;
-  dom.erdSelect.innerHTML = '';
-  tables.forEach((t) => {
-    const opt = document.createElement('option');
-    opt.value = t.name;
-    opt.textContent = t.name;
-    dom.erdSelect.appendChild(opt);
-  });
-}
-
-function previewTable(name) {
-  if (!engine || !dom.erdPreview || !name) return;
-  const data = engine.queryRows(`SELECT * FROM ${name} LIMIT 15`);
-  renderTable(dom.erdPreview, data);
-  renderTemplates(name);
-}
-
 function refreshSchema() {
   if (!engine) return;
   schemaSnapshot = engine.describe();
-  populateErdSelect(schemaSnapshot.tables);
-  if (dom.erd && !erd) {
-    erd = createErd(dom.erd, {
-      onTableClick: (name) => {
-        if (dom.erdSelect) dom.erdSelect.value = name;
-        previewTable(name);
-      }
-    });
-  }
-  if (erd) erd.update(schemaSnapshot);
-  previewTable(schemaSnapshot.tables[0] && schemaSnapshot.tables[0].name);
   renderSidebar();
 }
 
@@ -296,40 +261,6 @@ function renderSidebar() {
   });
 }
 
-function buildTemplates(tableName) {
-  if (!schemaSnapshot) return [];
-  const table = schemaSnapshot.tables.find((t) => t.name === tableName);
-  if (!table) return [];
-  const cols = table.columns.map((c) => c.name);
-  const firstCol = cols[0] || '*';
-  const distinctCol = cols.find((c) => c !== firstCol) || firstCol;
-  const edge = schemaSnapshot.edges.find((e) => e.from === tableName) || schemaSnapshot.edges.find((e) => e.to === tableName);
-  const joinSql = edge
-    ? `SELECT *\nFROM ${edge.from} f\nJOIN ${edge.to} d ON f.${edge.fromColumn} = d.${edge.toColumn}\nLIMIT 20;`
-    : null;
-  return [
-    `SELECT COUNT(*) AS rows_count FROM ${tableName};`,
-    `SELECT ${distinctCol}, COUNT(*) AS occurrences\nFROM ${tableName}\nGROUP BY ${distinctCol}\nORDER BY occurrences DESC\nLIMIT 10;`,
-    joinSql
-  ].filter(Boolean);
-}
-
-function renderTemplates(tableName) {
-  if (!dom.erdTemplates) return;
-  const templates = buildTemplates(tableName);
-  if (!templates.length) {
-    dom.erdTemplates.innerHTML = '<p class="placeholder">Nessun template disponibile</p>';
-    return;
-  }
-  dom.erdTemplates.innerHTML = '';
-  templates.forEach((tpl) => {
-    const pre = document.createElement('pre');
-    pre.className = 'syntax-block';
-    pre.textContent = tpl;
-    dom.erdTemplates.appendChild(pre);
-  });
-}
-
 document.addEventListener('DOMContentLoaded', async () => {
   cacheDom();
   const params = parsePlaygroundParams();
@@ -361,13 +292,6 @@ document.addEventListener('DOMContentLoaded', async () => {
   }
 
   wireControls(params);
-  if (dom.erdSelect) {
-    dom.erdSelect.addEventListener('change', () => {
-      const table = dom.erdSelect.value;
-      previewTable(table);
-    });
-  }
-
   renderHistory();
 
   const shouldAutorun = params.autorun && params.dialect === 'sqlite';

@@ -1,4 +1,4 @@
-import { createEngine } from '../core/engine.js';
+import { createEngine } from '../../db-core.js';
 import { createElement, renderTable } from '../ui/dom.js';
 import { showToast } from '../ui/toast.js';
 import { createErd } from '../ui/erd.js';
