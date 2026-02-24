@@ -8,6 +8,7 @@ import { createErd } from '../ui/erd.js';
 const dom = {};
 let engine = null;
 let erd = null;
+let schemaSnapshot = null;
 
 function setStatus(message) {
   if (dom.status) dom.status.textContent = message;
@@ -70,6 +71,7 @@ function cacheDom() {
   dom.erd = document.getElementById('playgroundErd');
   dom.erdSelect = document.getElementById('erdTableSelect');
   dom.erdPreview = document.getElementById('erdTablePreview');
+  dom.erdTemplates = document.getElementById('erdTemplateQueries');
 }
 
 function populateErdSelect(tables) {
@@ -87,12 +89,13 @@ function previewTable(name) {
   if (!engine || !dom.erdPreview || !name) return;
   const data = engine.queryRows(`SELECT * FROM ${name} LIMIT 15`);
   renderTable(dom.erdPreview, data);
+  renderTemplates(name);
 }
 
 function refreshSchema() {
   if (!engine) return;
-  const schema = engine.describe();
-  populateErdSelect(schema.tables);
+  schemaSnapshot = engine.describe();
+  populateErdSelect(schemaSnapshot.tables);
   if (dom.erd && !erd) {
     erd = createErd(dom.erd, {
       onTableClick: (name) => {
@@ -101,8 +104,42 @@ function refreshSchema() {
       }
     });
   }
-  if (erd) erd.update(schema);
-  previewTable(schema.tables[0] && schema.tables[0].name);
+  if (erd) erd.update(schemaSnapshot);
+  previewTable(schemaSnapshot.tables[0] && schemaSnapshot.tables[0].name);
+}
+
+function buildTemplates(tableName) {
+  if (!schemaSnapshot) return [];
+  const table = schemaSnapshot.tables.find((t) => t.name === tableName);
+  if (!table) return [];
+  const cols = table.columns.map((c) => c.name);
+  const firstCol = cols[0] || '*';
+  const distinctCol = cols.find((c) => c !== firstCol) || firstCol;
+  const edge = schemaSnapshot.edges.find((e) => e.from === tableName) || schemaSnapshot.edges.find((e) => e.to === tableName);
+  const joinSql = edge
+    ? `SELECT *\nFROM ${edge.from} f\nJOIN ${edge.to} d ON f.${edge.fromColumn} = d.${edge.toColumn}\nLIMIT 20;`
+    : null;
+  return [
+    `SELECT COUNT(*) AS rows_count FROM ${tableName};`,
+    `SELECT ${distinctCol}, COUNT(*) AS occurrences\nFROM ${tableName}\nGROUP BY ${distinctCol}\nORDER BY occurrences DESC\nLIMIT 10;`,
+    joinSql
+  ].filter(Boolean);
+}
+
+function renderTemplates(tableName) {
+  if (!dom.erdTemplates) return;
+  const templates = buildTemplates(tableName);
+  if (!templates.length) {
+    dom.erdTemplates.innerHTML = '<p class="placeholder">Nessun template disponibile</p>';
+    return;
+  }
+  dom.erdTemplates.innerHTML = '';
+  templates.forEach((tpl) => {
+    const pre = document.createElement('pre');
+    pre.className = 'syntax-block';
+    pre.textContent = tpl;
+    dom.erdTemplates.appendChild(pre);
+  });
 }
 
 document.addEventListener('DOMContentLoaded', async () => {

@@ -33,51 +33,31 @@ function createDemoDb(SQL) {
       segment TEXT,
       country TEXT,
       credit_limit REAL,
-      churn_risk REAL,
-      created_at TEXT,
-      rbac_role TEXT
-    );
-    CREATE TABLE product_categories (
-      id INTEGER PRIMARY KEY,
-      name TEXT
+      email TEXT,
+      phone TEXT,
+      created_at TEXT
     );
     CREATE TABLE products (
       id INTEGER PRIMARY KEY,
       name TEXT,
-      category_id INTEGER,
-      sku TEXT,
+      category TEXT,
+      price REAL,
       cost_price REAL,
-      price REAL,
-      currency TEXT,
-      is_active INTEGER,
-      FOREIGN KEY(category_id) REFERENCES product_categories(id)
-    );
-    CREATE TABLE product_prices_history (
-      id INTEGER PRIMARY KEY,
-      product_id INTEGER,
-      effective_from TEXT,
-      price REAL,
-      currency TEXT,
-      FOREIGN KEY(product_id) REFERENCES products(id)
-    );
-    CREATE TABLE stores (
-      id INTEGER PRIMARY KEY,
-      name TEXT,
-      channel TEXT,
-      city TEXT
+      active INTEGER,
+      created_at TEXT
     );
     CREATE TABLE orders (
       id INTEGER PRIMARY KEY,
       customer_id INTEGER,
-      store_id INTEGER,
+      name TEXT,
       order_date TEXT,
       status TEXT,
-      total_amount REAL,
       currency TEXT,
-      payment_status TEXT,
-      shipping_status TEXT,
-      FOREIGN KEY(customer_id) REFERENCES customers(id),
-      FOREIGN KEY(store_id) REFERENCES stores(id)
+      total_amount REAL,
+      discount_amount REAL,
+      channel TEXT,
+      store_id INTEGER,
+      FOREIGN KEY(customer_id) REFERENCES customers(id)
     );
     CREATE TABLE order_items (
       id INTEGER PRIMARY KEY,
@@ -86,95 +66,64 @@ function createDemoDb(SQL) {
       quantity INTEGER,
       unit_price REAL,
       discount_pct REAL,
-      tax_amount REAL,
       FOREIGN KEY(order_id) REFERENCES orders(id),
       FOREIGN KEY(product_id) REFERENCES products(id)
     );
     CREATE TABLE payments (
       id INTEGER PRIMARY KEY,
       order_id INTEGER,
+      method TEXT,
       paid_at TEXT,
       amount REAL,
-      method TEXT,
       status TEXT,
       FOREIGN KEY(order_id) REFERENCES orders(id)
-    );
-    CREATE TABLE refunds (
-      id INTEGER PRIMARY KEY,
-      order_id INTEGER,
-      order_item_id INTEGER,
-      refund_at TEXT,
-      amount REAL,
-      reason TEXT,
-      FOREIGN KEY(order_id) REFERENCES orders(id),
-      FOREIGN KEY(order_item_id) REFERENCES order_items(id)
-    );
-    CREATE TABLE carriers (
-      id INTEGER PRIMARY KEY,
-      name TEXT,
-      mode TEXT
     );
     CREATE TABLE shipments (
       id INTEGER PRIMARY KEY,
       order_id INTEGER,
-      carrier_id INTEGER,
       shipped_at TEXT,
+      carrier TEXT,
+      shipping_cost REAL,
       delivered_at TEXT,
       status TEXT,
-      FOREIGN KEY(order_id) REFERENCES orders(id),
-      FOREIGN KEY(carrier_id) REFERENCES carriers(id)
+      FOREIGN KEY(order_id) REFERENCES orders(id)
     );
-    CREATE TABLE inventory_movements (
+    CREATE TABLE returns (
       id INTEGER PRIMARY KEY,
-      product_id INTEGER,
-      store_id INTEGER,
-      movement_date TEXT,
-      quantity INTEGER,
-      movement_type TEXT,
-      source TEXT,
-      FOREIGN KEY(product_id) REFERENCES products(id),
-      FOREIGN KEY(store_id) REFERENCES stores(id)
-    );
-    CREATE TABLE employees (
-      id INTEGER PRIMARY KEY,
-      store_id INTEGER,
-      name TEXT,
-      role TEXT,
-      hired_at TEXT,
-      salary REAL,
-      FOREIGN KEY(store_id) REFERENCES stores(id)
+      order_id INTEGER,
+      returned_at TEXT,
+      reason TEXT,
+      refund_amount REAL,
+      FOREIGN KEY(order_id) REFERENCES orders(id)
     );
     CREATE TABLE events (
-      id INTEGER PRIMARY KEY,
-      customer_id INTEGER,
-      event_type TEXT,
-      event_time TEXT,
+      event_id INTEGER PRIMARY KEY,
+      user_id INTEGER,
       session_id TEXT,
-      metadata TEXT,
-      FOREIGN KEY(customer_id) REFERENCES customers(id)
+      event_time TEXT,
+      event_type TEXT,
+      page TEXT,
+      referrer TEXT,
+      device TEXT
     );
-    CREATE TABLE currency_rates (
-      id INTEGER PRIMARY KEY,
-      rate_date TEXT,
-      currency TEXT,
-      usd_rate REAL
+    CREATE TABLE dim_date (
+      date TEXT PRIMARY KEY,
+      year INTEGER,
+      month INTEGER,
+      day INTEGER,
+      week INTEGER,
+      dow INTEGER
     );
-    CREATE TABLE audit_log (
-      id INTEGER PRIMARY KEY,
-      entity TEXT NOT NULL,
-      event_type TEXT NOT NULL CHECK(event_type IN ('INSERT','UPDATE','DELETE')),
-      payload TEXT,
-      created_at TEXT NOT NULL DEFAULT (datetime('now'))
-    );
-    CREATE TABLE customer_notes (
-      id INTEGER PRIMARY KEY,
+    CREATE TABLE fact_orders (
+      order_id INTEGER PRIMARY KEY,
+      date TEXT,
       customer_id INTEGER,
-      note_date TEXT,
-      note_type TEXT,
-      note_text TEXT,
-      author_employee_id INTEGER,
-      FOREIGN KEY(customer_id) REFERENCES customers(id),
-      FOREIGN KEY(author_employee_id) REFERENCES employees(id)
+      total_amount REAL,
+      status TEXT,
+      channel TEXT,
+      FOREIGN KEY(order_id) REFERENCES orders(id),
+      FOREIGN KEY(date) REFERENCES dim_date(date),
+      FOREIGN KEY(customer_id) REFERENCES customers(id)
     );
   `);
 
@@ -189,14 +138,14 @@ function createDemoDb(SQL) {
   const countries = ['Italy', 'Spain', 'France', 'Germany', 'USA', 'UK', 'Canada', 'Brazil'];
   const roles = ['viewer', 'analyst', 'manager', 'admin'];
   const categories = ['Software', 'Hardware', 'Service', 'Training', 'Accessories', 'Cloud', 'Support', 'Licenses'];
-  const channels = ['online', 'physical'];
+  const channels = ['online', 'physical', 'partner'];
   const cities = ['Milan', 'Rome', 'Paris', 'Berlin', 'Madrid', 'London', 'New York', 'Toronto'];
-  const orderStatuses = ['PAID', 'SHIPPED', 'REFUNDED', 'PENDING'];
+  const orderStatuses = ['PAID', 'SHIPPED', 'REFUNDED', 'PENDING', 'CANCELLED'];
   const paymentStatuses = ['PAID', 'PARTIAL', 'DECLINED'];
   const shippingStatuses = ['CREATED', 'SHIPPED', 'DELIVERED', 'RETURNED'];
   const currencies = ['EUR', 'USD', 'GBP'];
   const methods = ['card', 'paypal', 'wire', 'cash'];
-  const eventTypes = ['pageview', 'add_to_cart', 'purchase', 'refund', 'login', 'signup'];
+  const eventTypes = ['pageview', 'add_to_cart', 'purchase', 'refund', 'login', 'signup', 'support'];
 
   db.run('BEGIN');
   segments.forEach((seg, idx) => {
@@ -207,97 +156,73 @@ function createDemoDb(SQL) {
     const segment = segments[i % segments.length].code;
     const country = countries[i % countries.length];
     const credit = Number((2000 + rnd() * 48000).toFixed(2));
-    const churn = Number((rnd() * 0.9).toFixed(3));
-    const role = roles[i % roles.length];
+    const email = i % 50 === 0 ? null : `customer${i}@example.com`;
+    const phone = i % 33 === 0 ? null : `+39-02-${String(100000 + i).slice(-6)}`;
     const createdMonth = String(1 + (i % 12)).padStart(2, '0');
     const createdDay = String(1 + (i % 27)).padStart(2, '0');
     db.run(
-      'INSERT INTO customers (id, name, segment, country, credit_limit, churn_risk, created_at, rbac_role) VALUES (?, ?, ?, ?, ?, ?, ?, ?)',
-      [i, `Customer ${i}`, segment, country, credit, churn, `2025-${createdMonth}-${createdDay}`, role]
+      'INSERT INTO customers (id, name, segment, country, credit_limit, email, phone, created_at) VALUES (?, ?, ?, ?, ?, ?, ?, ?)',
+      [i, `Customer ${i}`, segment, country, credit, email, phone, `2024-${createdMonth}-${createdDay}`]
     );
   }
-
-  categories.forEach((name, idx) => {
-    db.run('INSERT INTO product_categories (id, name) VALUES (?, ?)', [idx + 1, name]);
-  });
 
   for (let i = 1; i <= 240; i += 1) {
-    const category = 1 + (i % categories.length);
-    const sku = `SKU-${String(i).padStart(4, '0')}`;
+    const category = categories[i % categories.length];
     const cost = Number((10 + rnd() * 250).toFixed(2));
-    const price = Number((cost * (1.3 + rnd() * 0.9)).toFixed(2));
-    const currency = currencies[i % currencies.length];
-    const active = i % 17 !== 0 ? 1 : 0;
+    const price = Number((cost * (1.2 + rnd() * 1.1)).toFixed(2));
+    const active = i % 19 !== 0 ? 1 : 0;
+    const createdMonth = String(1 + (i % 12)).padStart(2, '0');
     db.run(
-      'INSERT INTO products (id, name, category_id, sku, cost_price, price, currency, is_active) VALUES (?, ?, ?, ?, ?, ?, ?, ?)',
-      [i, `Product ${i}`, category, sku, cost, price, currency, active]
+      'INSERT INTO products (id, name, category, price, cost_price, active, created_at) VALUES (?, ?, ?, ?, ?, ?, ?)',
+      [i, `Product ${i}`, category, price, cost, active, `2024-${createdMonth}-01`]
     );
-    // price history: last 3 months
-    for (let m = 0; m < 3; m += 1) {
-      const month = String(12 - m).padStart(2, '0');
-      const histPrice = Number((price * (1 - m * 0.03 + rnd() * 0.02)).toFixed(2));
-      db.run(
-        'INSERT INTO product_prices_history (product_id, effective_from, price, currency) VALUES (?, ?, ?, ?)',
-        [i, `2025-${month}-01`, histPrice, currency]
-      );
-    }
-  }
-
-  for (let i = 1; i <= 14; i += 1) {
-    db.run('INSERT INTO stores (id, name, channel, city) VALUES (?, ?, ?, ?)', [
-      i,
-      `Store ${i}`,
-      channels[i % channels.length],
-      cities[i % cities.length]
-    ]);
   }
 
   let orderId = 1;
   let orderItemId = 1;
   let paymentId = 1;
-  let refundId = 1;
+  let returnId = 1;
   let shipmentId = 1;
-  let inventoryId = 1;
   let eventId = 1;
-  let noteId = 1;
-
-  const carriers = ['DHL', 'UPS', 'FedEx', 'Poste', 'GLS'];
-  carriers.forEach((c, idx) => {
-    db.run('INSERT INTO carriers (id, name, mode) VALUES (?, ?, ?)', [idx + 1, c, idx % 2 === 0 ? 'air' : 'ground']);
-  });
-
-  for (let i = 1; i <= 40; i += 1) {
-    const storeId = 1 + (i % 14);
-    const hiredMonth = String(1 + (i % 12)).padStart(2, '0');
-    db.run('INSERT INTO employees (id, store_id, name, role, hired_at, salary) VALUES (?, ?, ?, ?, ?, ?)', [
-      i,
-      storeId,
-      `Employee ${i}`,
-      roles[i % roles.length],
-      `2024-${hiredMonth}-15`,
-      Number((32000 + rnd() * 28000).toFixed(2))
-    ]);
-  }
 
   function randomCurrency() {
     return currencies[Math.floor(rnd() * currencies.length)];
   }
 
-  for (let i = 1; i <= 3600; i += 1) {
-    const customerId = 1 + Math.floor(rnd() * 400);
-    const storeId = 1 + Math.floor(rnd() * 14);
+  function generateDates() {
     const month = String(1 + Math.floor(rnd() * 12)).padStart(2, '0');
     const day = String(1 + Math.floor(rnd() * 28)).padStart(2, '0');
+    return { month, day, date: `2025-${month}-${day}` };
+  }
+
+  function ensureDimDate(dateStr) {
+    const [y, m, d] = dateStr.split('-').map(Number);
+    const jsDate = new Date(y, m - 1, d);
+    const startOfYear = new Date(y, 0, 1);
+    const dayOfYear = Math.floor((jsDate - startOfYear) / 86400000) + 1;
+    const week = Math.max(1, Math.ceil(dayOfYear / 7));
+    db.run('INSERT OR IGNORE INTO dim_date (date, year, month, day, week, dow) VALUES (?, ?, ?, ?, ?, ?)', [
+      dateStr,
+      y,
+      m,
+      d,
+      week,
+      jsDate.getDay()
+    ]);
+  }
+
+  for (let i = 1; i <= 4200; i += 1) {
+    const { month, day, date } = generateDates();
+    const customerId = 1 + Math.floor(rnd() * 400);
     const status = orderStatuses[i % orderStatuses.length];
     const currency = randomCurrency();
-    const paymentStatus = paymentStatuses[i % paymentStatuses.length];
-    const shippingStatus = shippingStatuses[i % shippingStatuses.length];
-    const orderDate = `2025-${month}-${day}`;
+    const channel = channels[i % channels.length];
+    const discountAmount = Number((rnd() * 30).toFixed(2));
     let orderTotal = 0;
 
     db.run(
-      'INSERT INTO orders (id, customer_id, store_id, order_date, status, total_amount, currency, payment_status, shipping_status) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)',
-      [orderId, customerId, storeId, orderDate, status, 0, currency, paymentStatus, shippingStatus]
+      'INSERT INTO orders (id, customer_id, name, order_date, status, currency, total_amount, discount_amount, channel, store_id) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?)',
+      [orderId, customerId, `Order ${orderId}`, date, status, currency, 0, discountAmount, channel, 1 + (i % 14)]
     );
 
     const itemsCount = 1 + Math.floor(rnd() * 4);
@@ -306,145 +231,122 @@ function createDemoDb(SQL) {
       const qty = 1 + Math.floor(rnd() * 4);
       const unitPrice = Number((20 + rnd() * 380).toFixed(2));
       const discount = Number((rnd() * 0.25).toFixed(3));
-      const tax = Number((unitPrice * qty * 0.22).toFixed(2));
-      orderTotal += Number((unitPrice * qty * (1 - discount) + tax).toFixed(2));
+      orderTotal += Number((unitPrice * qty * (1 - discount)).toFixed(2));
       db.run(
-        'INSERT INTO order_items (id, order_id, product_id, quantity, unit_price, discount_pct, tax_amount) VALUES (?, ?, ?, ?, ?, ?, ?)',
-        [orderItemId, orderId, productId, qty, unitPrice, discount, tax]
+        'INSERT INTO order_items (id, order_id, product_id, quantity, unit_price, discount_pct) VALUES (?, ?, ?, ?, ?, ?)',
+        [orderItemId, orderId, productId, qty, unitPrice, discount]
       );
       orderItemId += 1;
     }
 
+    // Inject controlled outliers and nulls
+    if (i % 700 === 0) orderTotal = orderTotal * 6;
+    if (i % 555 === 0) orderTotal = null;
+
     db.run('UPDATE orders SET total_amount = ? WHERE id = ?', [orderTotal, orderId]);
 
-    const paidAmount = paymentStatus === 'DECLINED' ? 0 : Number((orderTotal * (paymentStatus === 'PARTIAL' ? 0.6 : 1)).toFixed(2));
+    const paidAmount =
+      status === 'CANCELLED'
+        ? 0
+        : Number(((orderTotal || 0) * (paymentStatuses[i % paymentStatuses.length] === 'PARTIAL' ? 0.6 : 1)).toFixed(2));
     db.run(
-      'INSERT INTO payments (id, order_id, paid_at, amount, method, status) VALUES (?, ?, ?, ?, ?, ?)',
-      [
-        paymentId,
-        orderId,
-        `2025-${month}-${String(Number(day) + 1).padStart(2, '0')}`,
-        paidAmount,
-        methods[i % methods.length],
-        paymentStatus
-      ]
+      'INSERT INTO payments (id, order_id, method, paid_at, amount, status) VALUES (?, ?, ?, ?, ?, ?)',
+      [paymentId, orderId, methods[i % methods.length], `2025-${month}-${String(Number(day) + 1).padStart(2, '0')}`, paidAmount, paymentStatuses[i % paymentStatuses.length]]
     );
     paymentId += 1;
 
-    if (status === 'REFUNDED' && paidAmount > 0 && rnd() > 0.5) {
-      const refundVal = Number((paidAmount * (0.2 + rnd() * 0.6)).toFixed(2));
-      db.run(
-        'INSERT INTO refunds (id, order_id, order_item_id, refund_at, amount, reason) VALUES (?, ?, ?, ?, ?, ?)',
-        [
-          refundId,
-          orderId,
-          orderItemId - 1,
-          `2025-${month}-${String(Number(day) + 3).padStart(2, '0')}`,
-          refundVal,
-          'customer_return'
-        ]
-      );
-      refundId += 1;
-    }
-
     db.run(
-      'INSERT INTO shipments (id, order_id, carrier_id, shipped_at, delivered_at, status) VALUES (?, ?, ?, ?, ?, ?)',
+      'INSERT INTO shipments (id, order_id, shipped_at, carrier, shipping_cost, delivered_at, status) VALUES (?, ?, ?, ?, ?, ?, ?)',
       [
         shipmentId,
         orderId,
-        1 + (orderId % carriers.length),
         `2025-${month}-${String(Number(day) + 1).padStart(2, '0')}`,
+        ['DHL', 'UPS', 'FedEx', 'Poste', 'GLS'][orderId % 5],
+        Number((5 + rnd() * 20).toFixed(2)),
         `2025-${month}-${String(Number(day) + 4).padStart(2, '0')}`,
-        shippingStatus
+        shippingStatuses[i % shippingStatuses.length]
       ]
     );
     shipmentId += 1;
 
-    // events per order
+    if (status === 'REFUNDED' && rnd() > 0.4) {
+      const refundVal = Number(((paidAmount || 0) * (0.2 + rnd() * 0.6)).toFixed(2));
+      db.run(
+        'INSERT INTO returns (id, order_id, returned_at, reason, refund_amount) VALUES (?, ?, ?, ?, ?)',
+        [returnId, orderId, `2025-${month}-${String(Number(day) + 3).padStart(2, '0')}`, 'customer_return', refundVal]
+      );
+      returnId += 1;
+    }
+
+    // events per order with duplicate session injection
     const eventCount = 2 + Math.floor(rnd() * 4);
     for (let e = 0; e < eventCount; e += 1) {
       const etype = eventTypes[(i + e) % eventTypes.length];
+      const sessionId = `sess-${customerId}-${Math.floor(orderId / 3)}`;
+      const referrer = e === 0 ? 'ads' : e === 1 ? 'email' : 'direct';
       db.run(
-        'INSERT INTO events (id, customer_id, event_type, event_time, session_id, metadata) VALUES (?, ?, ?, ?, ?, ?)',
+        'INSERT INTO events (event_id, user_id, session_id, event_time, event_type, page, referrer, device) VALUES (?, ?, ?, ?, ?, ?, ?, ?)',
         [
           eventId,
           customerId,
+          sessionId,
+          `${date}T10:${String(10 + e).padStart(2, '0')}:00`,
           etype,
-          `2025-${month}-${String(Number(day) + e).padStart(2, '0')}T10:${String(10 + e).padStart(2, '0')}:00`,
-          `sess-${customerId}-${orderId}`,
-          etype === 'add_to_cart' ? '{"cart_size":1}' : '{}'
+          ['/home', '/product', '/cart', '/checkout'][e % 4],
+          referrer,
+          ['mobile', 'desktop'][e % 2]
         ]
       );
+      // controlled duplicate
+      if (e === 0 && i % 200 === 0) {
+        db.run(
+          'INSERT INTO events (event_id, user_id, session_id, event_time, event_type, page, referrer, device) VALUES (?, ?, ?, ?, ?, ?, ?, ?)',
+          [
+            eventId + 100000,
+            customerId,
+            sessionId,
+            `${date}T10:${String(10 + e).padStart(2, '0')}:05`,
+            etype,
+            '/home',
+            referrer,
+            'mobile'
+          ]
+        );
+      }
       eventId += 1;
     }
 
-    // inventory movement
-    const movementQty = 1 + Math.floor(rnd() * 6);
-    db.run(
-      'INSERT INTO inventory_movements (id, product_id, store_id, movement_date, quantity, movement_type, source) VALUES (?, ?, ?, ?, ?, ?, ?)',
-      [
-        inventoryId,
-        1 + Math.floor(rnd() * 240),
-        storeId,
-        `2025-${month}-${day}`,
-        -movementQty,
-        'sale',
-        'order'
-      ]
-    );
-    inventoryId += 1;
-
-    if (rnd() > 0.75) {
-      db.run(
-        'INSERT INTO audit_log (entity, event_type, payload, created_at) VALUES (?, ?, ?, ?)',
-        ['orders', 'UPDATE', `{"order_id":${orderId},"status":"${status}"}`, `2025-${month}-${day}T12:00:00`]
-      );
-    }
-
-    if (rnd() > 0.8) {
-      db.run(
-        'INSERT INTO customer_notes (id, customer_id, note_date, note_type, note_text, author_employee_id) VALUES (?, ?, ?, ?, ?, ?)',
-        [
-          noteId,
-          customerId,
-          `2025-${month}-${day}`,
-          'followup',
-          'Reminder: validate payment method',
-          1 + Math.floor(rnd() * 30)
-        ]
-      );
-      noteId += 1;
-    }
+    ensureDimDate(date);
+    db.run('INSERT INTO fact_orders (order_id, date, customer_id, total_amount, status, channel) VALUES (?, ?, ?, ?, ?, ?)', [
+      orderId,
+      date,
+      customerId,
+      orderTotal,
+      status,
+      channel
+    ]);
 
     orderId += 1;
   }
 
-  // currency rates last 5 months for three currencies
-  let rateId = 1;
-  for (let m = 1; m <= 5; m += 1) {
-    const month = String(13 - m).padStart(2, '0');
-    currencies.forEach((cur) => {
-      const base = cur === 'EUR' ? 1.08 : cur === 'GBP' ? 1.26 : 1;
-      db.run('INSERT INTO currency_rates (id, rate_date, currency, usd_rate) VALUES (?, ?, ?, ?)', [
-        rateId,
-        `2025-${month}-01`,
-        cur,
-        Number((base + rnd() * 0.05).toFixed(4))
-      ]);
-      rateId += 1;
-    });
+  // populate remaining dim_date gaps across 2025
+  for (let m = 1; m <= 12; m += 1) {
+    for (let d = 1; d <= 28; d += 1) {
+      ensureDimDate(`2025-${String(m).padStart(2, '0')}-${String(d).padStart(2, '0')}`);
+    }
   }
 
   db.run('CREATE INDEX idx_orders_customer ON orders(customer_id)');
   db.run('CREATE INDEX idx_orders_status ON orders(status)');
+  db.run('CREATE INDEX idx_orders_date ON orders(order_date)');
   db.run('CREATE INDEX idx_order_items_order ON order_items(order_id)');
   db.run('CREATE INDEX idx_order_items_product ON order_items(product_id)');
   db.run('CREATE INDEX idx_payments_order ON payments(order_id)');
-  db.run('CREATE INDEX idx_refunds_order ON refunds(order_id)');
+  db.run('CREATE INDEX idx_returns_order ON returns(order_id)');
   db.run('CREATE INDEX idx_shipments_order ON shipments(order_id)');
-  db.run('CREATE INDEX idx_events_customer ON events(customer_id)');
-  db.run('CREATE INDEX idx_products_category ON products(category_id)');
-  db.run('CREATE INDEX idx_inventory_product ON inventory_movements(product_id)');
+  db.run('CREATE INDEX idx_events_user ON events(user_id)');
+  db.run('CREATE INDEX idx_events_session ON events(session_id)');
+  db.run('CREATE INDEX idx_events_time ON events(event_time)');
 
   db.run('COMMIT');
   return db;
