@@ -1,31 +1,21 @@
 import { NextResponse } from 'next/server';
 import { getPool } from '@/lib/db';
+import { cleanupExpiredSchemas, ensureAppSchema } from '@/lib/session';
 
-async function cleanup() {
-  const pool = getPool();
-  const client = await pool.connect();
+export const runtime = 'nodejs';
+
+export async function POST() {
+  const client = await getPool().connect();
   try {
-    const expired = await client.query('SELECT schema_name FROM app.sessions WHERE expires_at < now()');
-    for (const row of expired.rows) {
-      if (typeof row.schema_name === 'string' && /^session_[a-f0-9]{32}$/.test(row.schema_name)) {
-        await client.query(`DROP SCHEMA IF EXISTS ${row.schema_name} CASCADE`);
-      }
-    }
-    await client.query('DELETE FROM app.sessions WHERE expires_at < now()');
-    return NextResponse.json({ ok: true, cleaned: expired.rowCount });
+    await ensureAppSchema(client);
+    const dropped = await cleanupExpiredSchemas(client, 100);
+    return NextResponse.json({ dropped });
+  } catch (error) {
+    return NextResponse.json(
+      { error: { code: 'INTERNAL', message: error instanceof Error ? error.message : 'Unexpected error' } },
+      { status: 500 }
+    );
   } finally {
     client.release();
   }
-}
-
-export async function GET() {
-  try {
-    return await cleanup();
-  } catch (error) {
-    return NextResponse.json({ error: { code: 'INTERNAL', message: (error as Error).message } }, { status: 500 });
-  }
-}
-
-export async function POST() {
-  return GET();
 }
