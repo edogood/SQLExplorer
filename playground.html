@@ -67,6 +67,7 @@
               </select>
             </label>
             <button id="runQueryBtn" class="btn btn-primary" type="button">Esegui query</button>
+            <button id="explainBtn" class="btn btn-secondary" type="button">Explain</button>
             <button id="resetDbBtn" class="btn btn-secondary" type="button">Reset DB demo</button>
           </div>
 
@@ -81,7 +82,22 @@
           <div id="resultContainer" class="result-container">
             <p class="placeholder">In attesa del database...</p>
           </div>
+          <h3>Piano</h3>
+          <div id="planContainer" class="result-container">
+            <p class="placeholder">Premi Explain per EXPLAIN QUERY PLAN</p>
+          </div>
         </div>
+
+        <aside class="side-panel">
+          <details open>
+            <summary>Schema rapido</summary>
+            <div id="schemaSidebar" class="schema-sidebar"></div>
+          </details>
+          <details>
+            <summary>History query</summary>
+            <div id="historyList" class="history-list"></div>
+          </details>
+        </aside>
       </div>
     </section>
 
