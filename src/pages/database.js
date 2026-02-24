@@ -6,11 +6,13 @@ import { createErd } from '../ui/erd.js';
 const dom = {};
 let engine = null;
 let erd = null;
+let schemaSnapshot = null;
 
 function cacheDom() {
   dom.status = document.getElementById('dbStatus');
   dom.tableSelect = document.getElementById('tableSelect');
   dom.tablePreview = document.getElementById('tablePreview');
+  dom.tableTemplates = document.getElementById('tableTemplates');
   dom.dbVisualizer = document.getElementById('dbVisualizer');
   dom.createBtn = document.getElementById('createTableBtn');
   dom.resetBtn = document.getElementById('resetDbBtn');
@@ -47,22 +49,58 @@ function previewFirstTable(tables) {
   }
   const data = engine.queryRows(`SELECT * FROM ${first.name || first} LIMIT 15`);
   renderTable(dom.tablePreview, data);
+  renderTemplates(first.name || first);
+}
+
+function buildTemplates(tableName) {
+  if (!schemaSnapshot) return [];
+  const table = schemaSnapshot.tables.find((t) => t.name === tableName);
+  if (!table) return [];
+  const cols = table.columns.map((c) => c.name);
+  const firstCol = cols[0] || '*';
+  const distinctCol = cols.find((c) => c !== firstCol) || firstCol;
+  const edge = schemaSnapshot.edges.find((e) => e.from === tableName) || schemaSnapshot.edges.find((e) => e.to === tableName);
+  const joinSql = edge
+    ? `SELECT *\nFROM ${edge.from} f\nJOIN ${edge.to} d ON f.${edge.fromColumn} = d.${edge.toColumn}\nLIMIT 20;`
+    : null;
+  return [
+    `SELECT COUNT(*) AS rows_count FROM ${tableName};`,
+    `SELECT ${distinctCol}, COUNT(*) AS occurrences\nFROM ${tableName}\nGROUP BY ${distinctCol}\nORDER BY occurrences DESC\nLIMIT 10;`,
+    joinSql
+  ].filter(Boolean);
+}
+
+function renderTemplates(tableName) {
+  if (!dom.tableTemplates) return;
+  const templates = buildTemplates(tableName);
+  if (!templates.length) {
+    dom.tableTemplates.innerHTML = '<p class="muted">Nessun template disponibile</p>';
+    return;
+  }
+  dom.tableTemplates.innerHTML = '';
+  templates.forEach((tpl) => {
+    const pre = document.createElement('pre');
+    pre.className = 'syntax-block';
+    pre.textContent = tpl;
+    dom.tableTemplates.appendChild(pre);
+  });
 }
 
 async function refreshTables() {
-  const schema = engine.describe();
-  populateTables(schema.tables);
+  schemaSnapshot = engine.describe();
+  populateTables(schemaSnapshot.tables);
   if (dom.dbVisualizer && !erd) {
     erd = createErd(dom.dbVisualizer, {
       onTableClick: (name) => {
         if (dom.tableSelect) dom.tableSelect.value = name;
         const data = engine.queryRows(`SELECT * FROM ${name} LIMIT 15`);
         renderTable(dom.tablePreview, data);
+        renderTemplates(name);
       }
     });
   }
-  if (erd) erd.update(schema);
-  previewFirstTable(schema.tables);
+  if (erd) erd.update(schemaSnapshot);
+  previewFirstTable(schemaSnapshot.tables);
 }
 
 async function createTable() {
@@ -104,6 +142,7 @@ function wireEvents() {
       if (!table) return;
       const data = engine.queryRows(`SELECT * FROM ${table} LIMIT 15`);
       renderTable(dom.tablePreview, data);
+      renderTemplates(table);
     });
   }
   if (dom.createBtn) dom.createBtn.addEventListener('click', createTable);
