@@ -1,12 +1,12 @@
 import { createEngine } from '../../db-core.js';
 import { createElement, renderTable } from '../ui/dom.js';
 import { showToast } from '../ui/toast.js';
-import { createErd } from '../ui/erd.js';
 
 const dom = {};
 let engine = null;
 let erd = null;
 let schemaSnapshot = null;
+let createErd = null;
 
 function cacheDom() {
   dom.status = document.getElementById('dbStatus');
@@ -89,7 +89,10 @@ function renderTemplates(tableName) {
 async function refreshTables() {
   schemaSnapshot = engine.describe();
   populateTables(schemaSnapshot.tables);
-  if (dom.dbVisualizer && !erd) {
+  if (!createErd && typeof document !== 'undefined') {
+    ({ createErd } = await import('../ui/erd.js'));
+  }
+  if (dom.dbVisualizer && createErd && !erd) {
     erd = createErd(dom.dbVisualizer, {
       onTableClick: (name) => {
         if (dom.tableSelect) dom.tableSelect.value = name;
@@ -149,11 +152,13 @@ function wireEvents() {
   if (dom.resetBtn) dom.resetBtn.addEventListener('click', resetDemo);
 }
 
-document.addEventListener('DOMContentLoaded', async () => {
-  cacheDom();
-  setStatus('Caricamento database...');
-  engine = await createEngine();
-  refreshTables();
-  setStatus('Database pronto');
-  wireEvents();
-});
+if (typeof document !== 'undefined') {
+  document.addEventListener('DOMContentLoaded', async () => {
+    cacheDom();
+    setStatus('Caricamento database...');
+    engine = await createEngine();
+    await refreshTables();
+    setStatus('Database pronto');
+    wireEvents();
+  });
+}

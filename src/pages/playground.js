@@ -261,43 +261,45 @@ function renderSidebar() {
   });
 }
 
-document.addEventListener('DOMContentLoaded', async () => {
-  cacheDom();
-  const params = parsePlaygroundParams();
-  if (dom.dialect) dom.dialect.value = params.dialect || 'sqlite';
-  if (dom.dialectBadge) dom.dialectBadge.textContent = `Dialetto esempi: ${DIALECTS[params.dialect] || 'SQLite'}`;
-  if (dom.engineBadge) dom.engineBadge.textContent = 'Engine: SQLite (sql.js)';
-  if (dom.datasetBadge) dom.datasetBadge.textContent = DATASET_LABEL;
-  if (dom.dialectNotice) {
-    dom.dialectNotice.hidden = params.dialect === 'sqlite';
-    if (params.dialect !== 'sqlite') {
-      dom.dialectNotice.textContent = 'Esecuzione: SQLite. Dialetto selezionato = esempi.';
+if (typeof document !== 'undefined') {
+  document.addEventListener('DOMContentLoaded', async () => {
+    cacheDom();
+    const params = parsePlaygroundParams();
+    if (dom.dialect) dom.dialect.value = params.dialect || 'sqlite';
+    if (dom.dialectBadge) dom.dialectBadge.textContent = `Dialetto esempi: ${DIALECTS[params.dialect] || 'SQLite'}`;
+    if (dom.engineBadge) dom.engineBadge.textContent = 'Engine: SQLite (sql.js)';
+    if (dom.datasetBadge) dom.datasetBadge.textContent = DATASET_LABEL;
+    if (dom.dialectNotice) {
+      dom.dialectNotice.hidden = params.dialect === 'sqlite';
+      if (params.dialect !== 'sqlite') {
+        dom.dialectNotice.textContent = 'Esecuzione: SQLite. Dialetto selezionato = esempi.';
+      }
     }
-  }
-  if (dom.status) dom.status.textContent = 'Caricamento engine...';
-
-  try {
-    engine = await createEngine();
-    setStatus('Database pronto');
-    refreshSchema();
-  } catch (err) {
-    setStatus('Errore caricamento engine');
-    showToast(err.message || String(err));
-    return;
-  }
-
-  if (dom.editor) {
-    const baseQuery = params.query || DIALECT_DEFAULT_QUERIES[params.dialect] || DEFAULT_QUERY;
-    dom.editor.value = baseQuery;
-  }
-
-  wireControls(params);
-  renderHistory();
-
-  const shouldAutorun = params.autorun && params.dialect === 'sqlite';
-  if (params.dialect && params.dialect !== 'sqlite' && params.autorun) {
-    setStatus('Dialetto non eseguibile qui, premi Esegui per usare SQLite');
-  } else if (shouldAutorun && params.query) {
-    runQuery();
-  }
-});
+    if (dom.status) dom.status.textContent = 'Caricamento engine...';
+  
+    try {
+      engine = await createEngine();
+      setStatus('Database pronto');
+      refreshSchema();
+    } catch (err) {
+      setStatus('Errore caricamento engine');
+      showToast(err.message || String(err));
+      return;
+    }
+  
+    if (dom.editor) {
+      const baseQuery = params.query || DIALECT_DEFAULT_QUERIES[params.dialect] || DEFAULT_QUERY;
+      dom.editor.value = baseQuery;
+    }
+  
+    wireControls(params);
+    renderHistory();
+  
+    const shouldAutorun = params.autorun && params.dialect === 'sqlite';
+    if (params.dialect && params.dialect !== 'sqlite' && params.autorun) {
+      setStatus('Dialetto non eseguibile qui, premi Esegui per usare SQLite');
+    } else if (shouldAutorun && params.query) {
+      runQuery();
+    }
+  });
+}

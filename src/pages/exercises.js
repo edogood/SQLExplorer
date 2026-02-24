@@ -43,11 +43,13 @@ function render() {
   });
 }
 
-document.addEventListener('DOMContentLoaded', () => {
-  cacheDom();
-  populateFilters();
-  dom.search?.addEventListener('input', render);
-  dom.topic?.addEventListener('change', render);
-  dom.difficulty?.addEventListener('change', render);
-  render();
-});
+if (typeof document !== 'undefined') {
+  document.addEventListener('DOMContentLoaded', () => {
+    cacheDom();
+    populateFilters();
+    dom.search?.addEventListener('input', render);
+    dom.topic?.addEventListener('change', render);
+    dom.difficulty?.addEventListener('change', render);
+    render();
+  });
+}

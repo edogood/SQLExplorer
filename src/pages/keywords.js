@@ -88,11 +88,13 @@ function render() {
   renderList(filtered, dialect === 'all' ? 'sqlite' : dialect);
 }
 
-document.addEventListener('DOMContentLoaded', () => {
-  cacheDom();
-  ensureCategoryOptions();
-  dom.search?.addEventListener('input', render);
-  dom.dialect?.addEventListener('change', render);
-  dom.category?.addEventListener('change', render);
-  render();
-});
+if (typeof document !== 'undefined') {
+  document.addEventListener('DOMContentLoaded', () => {
+    cacheDom();
+    ensureCategoryOptions();
+    dom.search?.addEventListener('input', render);
+    dom.dialect?.addEventListener('change', render);
+    dom.category?.addEventListener('change', render);
+    render();
+  });
+}
