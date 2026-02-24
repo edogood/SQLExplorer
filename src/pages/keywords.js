@@ -1,4 +1,4 @@
-import { KEYWORD_ENTRIES } from '../data/keyword-entries.js';
+import { KEYWORD_DATA } from '../../keyword-data.js';
 import { buildPlaygroundUrl } from '../ui/links.js';
 
 const dom = {};
@@ -17,7 +17,7 @@ function announce(message) {
 }
 
 function uniqueCategories() {
-  const cats = new Set(KEYWORD_ENTRIES.map((k) => k.category || 'Altro'));
+  const cats = new Set(KEYWORD_DATA.map((k) => k.category || 'Altro'));
   return Array.from(cats.values()).sort();
 }
 
@@ -41,92 +41,32 @@ function renderList(entries, dialect) {
   entries.forEach((k) => {
     const article = document.createElement('article');
     article.className = 'keyword-card';
+    article.appendChild(Object.assign(document.createElement('h3'), { textContent: k.keyword }));
+    article.appendChild(Object.assign(document.createElement('p'), { className: 'muted', textContent: k.description || '' }));
 
-    const title = document.createElement('h3');
-    title.textContent = k.keyword;
-    article.appendChild(title);
+    const syntax = Object.assign(document.createElement('pre'), { textContent: (k.syntaxByDialect?.[dialect] || k.syntax || '') });
+    article.appendChild(syntax);
+    const example = k.realExampleByDialect?.[dialect] || k.engineExample || '';
+    article.appendChild(Object.assign(document.createElement('pre'), { textContent: example }));
 
-    const desc = document.createElement('p');
-    desc.className = 'muted';
-    desc.textContent = k.description || k.syntax || '';
-    article.appendChild(desc);
-
-    const example = (k.examples && (k.examples[dialect] || k.examples.sqlite)) || k.engineExample || '';
-    const pre = document.createElement('pre');
-    pre.textContent = example;
-    article.appendChild(pre);
-
-    const meta = document.createElement('div');
-    meta.className = 'keyword-meta';
-    const category = document.createElement('span');
-    category.textContent = k.category || '';
-    meta.appendChild(category);
-    article.appendChild(meta);
+    const notes = document.createElement('ul');
+    notes.className = 'keyword-points';
+    const argLi = document.createElement('li');
+    argLi.textContent = `Argomenti: ${k.argumentsByDialect?.[dialect] || '-'}`;
+    const noteLi = document.createElement('li');
+    noteLi.textContent = `Note: ${k.notesByDialect?.[dialect] || '-'}`;
+    notes.appendChild(argLi);
+    notes.appendChild(noteLi);
+    article.appendChild(notes);
 
     const actions = document.createElement('div');
     actions.className = 'keyword-actions';
-    const url = buildPlaygroundUrl({
-      dialect,
-      query: example,
-      autorun: true,
-      sqliteSafe: dialect === 'sqlite'
-    });
     const link = document.createElement('a');
     link.className = 'btn btn-primary';
-    link.href = url;
+    link.href = buildPlaygroundUrl({ dialect, query: example, autorun: true, sqliteSafe: dialect === 'sqlite' });
     link.textContent = 'Try in Playground';
     actions.appendChild(link);
     article.appendChild(actions);
-
-    if (k.useCases && k.useCases.length) {
-      const heading = document.createElement('h4');
-      heading.className = 'keyword-subtitle';
-      heading.textContent = 'Use case';
-      article.appendChild(heading);
-      const list = document.createElement('ul');
-      list.className = 'keyword-points';
-      k.useCases.forEach((u) => {
-        const li = document.createElement('li');
-        li.textContent = u;
-        list.appendChild(li);
-      });
-      article.appendChild(list);
-    }
-
-    if (k.pitfalls && k.pitfalls.length) {
-      const heading = document.createElement('h4');
-      heading.className = 'keyword-subtitle';
-      heading.textContent = 'Pitfall';
-      article.appendChild(heading);
-      const list = document.createElement('ul');
-      list.className = 'keyword-points';
-      k.pitfalls.forEach((p) => {
-        const li = document.createElement('li');
-        li.textContent = p;
-        list.appendChild(li);
-      });
-      article.appendChild(list);
-    }
-
-    if (k.dialectNotes && Object.keys(k.dialectNotes).length) {
-      const heading = document.createElement('h4');
-      heading.className = 'keyword-subtitle';
-      heading.textContent = 'Note dialetto';
-      article.appendChild(heading);
-      const list = document.createElement('ul');
-      list.className = 'keyword-points';
-      Object.entries(k.dialectNotes).forEach(([d, note]) => {
-        const li = document.createElement('li');
-        const strong = document.createElement('strong');
-        strong.textContent = `${d}: `;
-        li.appendChild(strong);
-        const span = document.createElement('span');
-        span.textContent = note;
-        li.appendChild(span);
-        list.appendChild(li);
-      });
-      article.appendChild(list);
-    }
 
     dom.list.appendChild(article);
   });
@@ -137,28 +77,15 @@ function render() {
   const term = (dom.search?.value || '').toLowerCase();
   const dialect = dom.dialect?.value || 'all';
   const category = dom.category?.value || 'all';
-  const filtered = KEYWORD_ENTRIES.filter((k) => {
-    if (!k.description || !k.examples || Object.values(k.examples).every((ex) => !ex || ex.trim().length < 8)) return false;
-    const blob = [
-      k.keyword,
-      k.category,
-      k.description,
-      ...(k.useCases || []),
-      ...(k.pitfalls || []),
-      ...(k.dialectNotes ? Object.values(k.dialectNotes) : []),
-      ...(k.examples ? Object.values(k.examples) : [])
-    ].join(' ').toLowerCase();
-    const termOk = !term || blob.includes(term);
-    const categoryOk = category === 'all' || k.category === category;
-    const dialectOk = dialect === 'all' || (k.examples && k.examples[dialect]);
-    return termOk && categoryOk && dialectOk;
+
+  const filtered = KEYWORD_DATA.filter((k) => {
+    const text = [k.keyword, k.category, k.description, ...(k.useCases || []), ...(k.pitfalls || [])].join(' ').toLowerCase();
+    return (!term || text.includes(term)) && (category === 'all' || k.category === category) && (dialect === 'all' || k.realExampleByDialect?.[dialect]);
   });
 
-  dom.count && (dom.count.textContent = `${filtered.length} keyword`);
+  if (dom.count) dom.count.textContent = `${filtered.length} keyword`;
   announce(`${filtered.length} keyword trovate`);
-
-  const targetDialect = dialect === 'all' ? 'sqlite' : dialect;
-  renderList(filtered, targetDialect);
+  renderList(filtered, dialect === 'all' ? 'sqlite' : dialect);
 }
 
 document.addEventListener('DOMContentLoaded', () => {

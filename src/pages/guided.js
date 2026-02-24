@@ -1,4 +1,4 @@
-import { createEngine } from '../core/engine.js';
+import { createEngine } from '../../db-core.js';
 import { GUIDED_STEPS } from '../data/guided-data.js';
 import { buildPlaygroundUrl } from '../ui/links.js';
 import { createElement, renderTable, clear } from '../ui/dom.js';
