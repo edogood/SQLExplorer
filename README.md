@@ -50,6 +50,9 @@ npm run dev
 3. Set `DATABASE_URL` in Project Settings → Environment Variables.
 4. Deploy.
 5. Optional (not required for correctness): set a **daily** cron to `POST /api/cleanup`.
+   - On Vercel **Hobby**, cron jobs must run at most once per day.
+   - ✅ Example (allowed on Hobby): `0 3 * * *`
+   - ❌ Example (not allowed on Hobby): `*/10 * * * *`
 
 ## Security model
 
