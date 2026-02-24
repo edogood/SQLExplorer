@@ -27,7 +27,6 @@
         <a href="trainer.html">Trainer</a>
         <a href="keyword.html">Keyword</a>
         <a href="syntax.html">Sintassi</a>
-        <a href="keywords.html">Keyword Explorer</a>
       </nav>
     </div>
   </header>
@@ -83,6 +82,24 @@
             <p class="placeholder">In attesa del database...</p>
           </div>
         </div>
+      </div>
+    </section>
+
+    <section class="panel">
+      <div class="panel-head">
+        <h2>DB Visualizer</h2>
+        <p>Schema grafico con click per anteprima tabella e layout automatico.</p>
+      </div>
+      <div class="playground-grid simple-grid">
+        <div class="editor-panel">
+          <div id="playgroundErd" class="db-visualizer" aria-label="Schema database"></div>
+        </div>
+        <aside class="side-panel">
+          <h3>Anteprima tabella</h3>
+          <label for="erdTableSelect">Tabella</label>
+          <select id="erdTableSelect"></select>
+          <div id="erdTablePreview" class="table-preview"></div>
+        </aside>
       </div>
     </section>
   </main>

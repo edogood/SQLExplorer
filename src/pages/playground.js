@@ -3,9 +3,11 @@ import { parsePlaygroundParams } from '../ui/links.js';
 import { escapeHtml, renderTable } from '../ui/dom.js';
 import { DEFAULT_QUERY, DIALECT_DEFAULT_QUERIES, DIALECTS } from '../data/dialects.js';
 import { showToast } from '../ui/toast.js';
+import { createErd } from '../ui/erd.js';
 
 const dom = {};
 let engine = null;
+let erd = null;
 
 function setStatus(message) {
   if (dom.status) dom.status.textContent = message;
@@ -40,6 +42,7 @@ async function resetDemo() {
     dom.editor.value = q;
   }
   dom.result.innerHTML = '<p class="placeholder">Database reimpostato.</p>';
+  refreshSchema();
 }
 
 function wireControls(params) {
@@ -64,6 +67,42 @@ function cacheDom() {
   dom.engineBadge = document.getElementById('engineBadge');
   dom.dialectBadge = document.getElementById('dialectBadge');
   dom.execSql = document.getElementById('executedSqlText');
+  dom.erd = document.getElementById('playgroundErd');
+  dom.erdSelect = document.getElementById('erdTableSelect');
+  dom.erdPreview = document.getElementById('erdTablePreview');
+}
+
+function populateErdSelect(tables) {
+  if (!dom.erdSelect) return;
+  dom.erdSelect.innerHTML = '';
+  tables.forEach((t) => {
+    const opt = document.createElement('option');
+    opt.value = t.name;
+    opt.textContent = t.name;
+    dom.erdSelect.appendChild(opt);
+  });
+}
+
+function previewTable(name) {
+  if (!engine || !dom.erdPreview || !name) return;
+  const data = engine.queryRows(`SELECT * FROM ${name} LIMIT 15`);
+  renderTable(dom.erdPreview, data);
+}
+
+function refreshSchema() {
+  if (!engine) return;
+  const schema = engine.describe();
+  populateErdSelect(schema.tables);
+  if (dom.erd && !erd) {
+    erd = createErd(dom.erd, {
+      onTableClick: (name) => {
+        if (dom.erdSelect) dom.erdSelect.value = name;
+        previewTable(name);
+      }
+    });
+  }
+  if (erd) erd.update(schema);
+  previewTable(schema.tables[0] && schema.tables[0].name);
 }
 
 document.addEventListener('DOMContentLoaded', async () => {
@@ -77,6 +116,7 @@ document.addEventListener('DOMContentLoaded', async () => {
   try {
     engine = await createEngine();
     setStatus('Database pronto');
+    refreshSchema();
   } catch (err) {
     setStatus('Errore caricamento engine');
     showToast(err.message || String(err));
@@ -89,6 +129,12 @@ document.addEventListener('DOMContentLoaded', async () => {
   }
 
   wireControls(params);
+  if (dom.erdSelect) {
+    dom.erdSelect.addEventListener('change', () => {
+      const table = dom.erdSelect.value;
+      previewTable(table);
+    });
+  }
 
   if (params.autorun && params.query) {
     runQuery();
