@@ -1,2 +1,5 @@
 node_modules/
 test-results/
+
+# generated at dev/build time
+public/assets/sql-wasm.wasm

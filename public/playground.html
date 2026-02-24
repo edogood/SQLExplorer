@@ -1,0 +1,118 @@
+<!doctype html>
+<html lang="it">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Playground SQL | SQL Lab</title>
+  <meta name="description" content="Playground SQL con engine SQLite in-browser, editor, run/reset e risultati.">
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Sora:wght@400;600;700;800&family=IBM+Plex+Mono:wght@400;500&display=swap" rel="stylesheet">
+  <link rel="stylesheet" href="/assets/styles.css">
+  <script defer src="/assets/sql-wasm.js"></script>
+  <script type="module" src="/assets/legacy/src/pages/playground.js"></script>
+</head>
+<body>
+  <div class="bg-shape bg-shape-one" aria-hidden="true"></div>
+  <div class="bg-shape bg-shape-two" aria-hidden="true"></div>
+
+  <header class="site-header">
+    <div class="header-inner">
+      <a href="/index.html" class="brand">SQL Lab Completo</a>
+      <nav class="top-nav">
+        <a href="/playground.html">Playground</a>
+        <a href="/database.html">Database</a>
+        <a href="/exercises.html">Exercises</a>
+        <a href="/guided.html">Percorso</a>
+        <a href="/trainer.html">Trainer</a>
+        <a href="/keyword.html">Keyword</a>
+        <a href="/syntax.html">Sintassi</a>
+      </nav>
+    </div>
+  </header>
+
+  <main class="page">
+    <section class="hero">
+      <p class="kicker">Runtime SQLite in-browser</p>
+      <h1>Playground focalizzato su esecuzione query</h1>
+      <p class="hero-copy">
+        Editor, run/reset e risultati con badge di stato. Tutti i contenuti (syntax, keyword, percorsi) sono in pagine dedicate e aprono il Playground con link diretti.
+      </p>
+    </section>
+
+    <section class="panel">
+      <div class="panel-head">
+        <h2>SQL Playground</h2>
+        <p>Scrivi la query, esegui e analizza il risultato. L'engine resta SQLite (sql.js) con parametri URL per prefill.</p>
+      </div>
+
+      <div class="status-row">
+        <span id="engineBadge" class="badge neutral">Engine: SQLite (sql.js)</span>
+        <span id="dialectBadge" class="badge neutral">Dialetto esempi: SQLite</span>
+        <span id="datasetBadge" class="badge neutral">Dataset: Demo e-commerce</span>
+        <span id="dbStatus" class="badge neutral" aria-live="polite">Inizializzazione...</span>
+      </div>
+      <div class="status-row">
+        <span id="dialectNotice" class="badge warning" hidden>Esecuzione: SQLite. Dialetto selezionato = esempi.</span>
+        <div class="status-links">
+          <a class="link-button" href="/database.html">Vai al Database</a>
+          <a class="link-button" href="#schemaSidebar">Vai allo schema</a>
+        </div>
+      </div>
+
+      <div class="playground-grid simple-grid">
+        <div class="editor-panel">
+          <label for="queryInput">Query editor</label>
+          <textarea id="queryInput" spellcheck="false" rows="14"></textarea>
+
+          <div class="controls-row">
+            <label class="dialect-control" for="dialectSelect">
+              <span>Dialetto esempi</span>
+              <select id="dialectSelect" class="dialect-select">
+                <option value="sqlite">SQLite (Engine)</option>
+                <option value="postgresql">PostgreSQL</option>
+                <option value="sqlserver">SQL Server</option>
+              </select>
+            </label>
+            <button id="runQueryBtn" class="btn btn-primary" type="button">Esegui query</button>
+            <button id="explainBtn" class="btn btn-secondary" type="button">Explain</button>
+            <button id="resetDbBtn" class="btn btn-secondary" type="button">Reset DB demo</button>
+          </div>
+
+          <details class="executed-sql-panel">
+            <summary>SQL eseguito</summary>
+            <pre id="executedSqlText" class="syntax-line">-</pre>
+          </details>
+        </div>
+
+        <div class="result-panel">
+          <h3>Risultato</h3>
+          <div id="resultContainer" class="result-container">
+            <p class="placeholder">In attesa del database...</p>
+          </div>
+          <h3>Piano</h3>
+          <div id="planContainer" class="result-container">
+            <p class="placeholder">Premi Explain per EXPLAIN QUERY PLAN</p>
+          </div>
+        </div>
+
+        <aside class="side-panel">
+          <details open>
+            <summary>Schema rapido</summary>
+            <div id="schemaSidebar" class="schema-sidebar"></div>
+          </details>
+          <details>
+            <summary>History query</summary>
+            <div id="historyList" class="history-list"></div>
+          </details>
+        </aside>
+      </div>
+    </section>
+
+  </main>
+
+  <footer class="site-footer">
+    <p>SQL Lab Completo - Engine SQLite (sql.js) con deep-link q/dialect/autorun verso il Playground.</p>
+  </footer>
+</body>
+</html>

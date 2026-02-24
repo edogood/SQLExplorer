@@ -1,0 +1,48 @@
+<!doctype html>
+<html lang="it">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Percorso Guidato | SQL Lab</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Sora:wght@400;600;700;800&family=IBM+Plex+Mono:wght@400;500&display=swap" rel="stylesheet">
+  <link rel="stylesheet" href="/assets/styles.css">
+  <script type="module" src="/assets/legacy/src/pages/guided.js"></script>
+</head>
+<body>
+  <div class="bg-shape bg-shape-one" aria-hidden="true"></div>
+  <div class="bg-shape bg-shape-two" aria-hidden="true"></div>
+
+  <header class="site-header">
+    <div class="header-inner">
+      <a href="/index.html" class="brand">SQL Lab Completo</a>
+      <nav class="top-nav">
+        <a href="/playground.html">Playground</a>
+        <a href="/database.html">Database</a>
+        <a href="/exercises.html">Exercises</a>
+        <a href="/guided.html">Percorso</a>
+        <a href="/trainer.html">Trainer</a>
+        <a href="/keyword.html">Keyword</a>
+        <a href="/syntax.html">Sintassi</a>
+      </nav>
+    </div>
+  </header>
+
+  <main class="page">
+    <section class="panel">
+      <div class="panel-head">
+        <h2>Percorso Guidato</h2>
+        <p>Step con obiettivo, hint, verifica output e tracking avanzamento.</p>
+        <div class="status-row">
+          <button id="resumeProgressBtn" class="btn btn-primary" type="button">Riprendi percorso</button>
+          <span id="guidedCount" class="badge neutral"></span>
+          <button id="resetProgressBtn" class="btn btn-secondary" type="button">Reset progress</button>
+        </div>
+      </div>
+
+      <div id="guidedList" class="keyword-list"></div>
+    </section>
+  </main>
+</body>
+</html>

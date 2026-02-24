@@ -194,3 +194,28 @@ curl -s -X POST http://localhost:3000/api/cleanup
 - **Timeouts**: all queries are capped at 3000ms.
 - **Invalid sessionId reuse**: expired IDs return `SESSION_EXPIRED`; create a new session.
 - **No cron configured**: acceptable; lazy cleanup keeps system healthy over normal traffic.
+
+## Deploy su Vercel (Next + pagine legacy statiche)
+
+Checklist operativa:
+
+- **Root Directory**: impostare la root del progetto su `/` (cartella repository `SQLExplorer`).
+- **Framework Preset**: `Next.js`.
+- **Build Command**: `npm run build` (include sync automatico di `sql-wasm.wasm` in `public/assets`).
+- **Output**: `.next` (gestito automaticamente da Next su Vercel).
+- **Env Vars**: impostare `DATABASE_URL` se si usano le API PostgreSQL.
+
+Verifiche post-deploy:
+
+1. Aprire `/` (hub Next).
+2. Aprire `/playground`, `/keywords`, `/syntax` (route App Router).
+3. Aprire direttamente le pagine statiche legacy:
+   - `/keyword.html`
+   - `/syntax.html`
+   - `/guided.html`
+   - `/exercises.html`
+   - `/trainer.html`
+   - `/playground.html`
+4. Verificare che CSS/JS siano caricati da `/assets/...` senza 404.
+
+Nota: le pagine legacy sono pubblicate da `public/` e asset/script sono in `public/assets/...` e `public/assets/legacy/...`.
