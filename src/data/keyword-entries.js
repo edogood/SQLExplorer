@@ -774,23 +774,292 @@ const base = [
   })
 ];
 
-const more = [
-  'QUALIFY_FILTER', 'WINDOW_FRAME', 'FILTER_CLAUSE', 'PERCENTILE_CONT', 'MEDIAN', 'SAMPLE', 'TABLE_SAMPLE', 'MERGE',
-  'UPSERT', 'ON CONFLICT', 'IS NULL', 'IS NOT NULL', 'NOT', 'AND', 'OR', 'LIKE ESCAPE', 'ILIKE',
-  'ESCAPE', 'CUBE', 'ROLLUP', 'GROUPING SETS', 'CROSS APPLY', 'OUTER APPLY', 'TOP', 'OFFSET FETCH',
-  'SEQUENCE', 'IDENTITY', 'COHORT', 'RETENTION', 'SESSIONIZATION', 'GAP AND ISLANDS', 'SCD TYPE2',
-  'INCREMENTAL LOAD', 'DATA QUALITY', 'DEDUPLICATION', 'AUDIT', 'MASKING', 'ROW LEVEL SECURITY', 'GRANT',
-  'REVOKE', 'BEGIN TRANSACTION', 'SET TRANSACTION'
-].map((kw) =>
+const extras = [
   baseEntry({
-    keyword: kw,
-    category: 'Advanced',
-    syntax: `${kw} ...`,
-    description: `Concetto avanzato ${kw} per pattern analitici o amministrativi.`,
-    sqlite: "SELECT id, total_amount FROM orders WHERE status = 'PAID' LIMIT 5;",
-    useCases: ['Pattern avanzati', 'Amministrazione'],
-    pitfalls: ['Dipendenza dal dialetto; adattare sintassi']
+    keyword: 'IS NULL',
+    category: 'Filter',
+    syntax: 'col IS NULL',
+    description: 'Controlla presenza di valori NULL.',
+    sqlite: 'SELECT id, name FROM customers WHERE email IS NULL AND phone IS NULL;',
+    useCases: ['Data quality per contatti', 'Filtri su colonne opzionali'],
+    pitfalls: ['= NULL restituisce sempre FALSE', 'IS NOT NULL per complementare']
+  }),
+  baseEntry({
+    keyword: 'IS NOT NULL',
+    category: 'Filter',
+    syntax: 'col IS NOT NULL',
+    description: 'Filtra righe con valore presente.',
+    sqlite: 'SELECT id, total_amount FROM orders WHERE total_amount IS NOT NULL LIMIT 20;',
+    useCases: ['Escludere outlier NULL', 'Preparare metriche corrette'],
+    pitfalls: ['NULL nei join richiedono gestione esplicita']
+  }),
+  baseEntry({
+    keyword: 'AND / OR / NOT',
+    category: 'Logic',
+    syntax: 'cond1 AND cond2; cond1 OR cond2; NOT cond',
+    description: 'Operatori booleani per combinare condizioni.',
+    sqlite: "SELECT id FROM orders WHERE status='PAID' AND total_amount > 100 AND NOT channel='partner';",
+    useCases: ['Filtri complessi', 'Esclusioni mirate'],
+    pitfalls: ['Aggiungere parentesi per priorità chiara']
+  }),
+  baseEntry({
+    keyword: 'LIKE ESCAPE',
+    category: 'Filter',
+    syntax: "col LIKE 'pattern' ESCAPE '\\\\'",
+    description: 'Gestisce caratteri speciali in pattern LIKE.',
+    sqlite: "SELECT name FROM customers WHERE name LIKE 'Customer\\_%' ESCAPE '\\\\' LIMIT 5;",
+    postgresql: "SELECT name FROM customers WHERE name LIKE 'Customer\\_%' ESCAPE '\\\\' LIMIT 5;",
+    sqlserver: "SELECT TOP 5 name FROM customers WHERE name LIKE 'Customer\\_%' ESCAPE '\\\\';",
+    useCases: ['Cerca valori contenenti _ o % letterali'],
+    pitfalls: ['Ricordare escape double in stringhe']
+  }),
+  baseEntry({
+    keyword: 'ILIKE',
+    category: 'Filter',
+    syntax: 'col ILIKE pattern',
+    description: 'Pattern match case-insensitive (PostgreSQL).',
+    sqlite: "SELECT name FROM customers WHERE LOWER(name) LIKE 'customer 1%';",
+    postgresql: "SELECT name FROM customers WHERE name ILIKE 'customer 1%';",
+    sqlserver: "SELECT name FROM customers WHERE name LIKE 'customer 1%' COLLATE Latin1_general_CI_AI;",
+    useCases: ['Ricerca user-friendly', 'Filtri UI case-insensitive'],
+    pitfalls: ['Non supportato nativamente in SQLite/SQL Server']
+  }),
+  baseEntry({
+    keyword: 'OFFSET FETCH',
+    category: 'Pagination',
+    syntax: 'ORDER BY col OFFSET n ROWS FETCH NEXT m ROWS ONLY',
+    description: 'Paginazione ANSI alternativa a LIMIT/TOP.',
+    sqlite: 'SELECT id, name FROM customers ORDER BY id LIMIT 10 OFFSET 20;',
+    postgresql: 'SELECT id, name FROM customers ORDER BY id OFFSET 20 LIMIT 10;',
+    sqlserver: 'SELECT id, name FROM customers ORDER BY id OFFSET 20 ROWS FETCH NEXT 10 ROWS ONLY;',
+    useCases: ['UI con pagina corrente', 'Compatibilità multi-dialect'],
+    pitfalls: ['Costoso su offset grandi; preferire keyset pagination']
+  }),
+  baseEntry({
+    keyword: 'TOP',
+    category: 'Pagination',
+    syntax: 'SELECT TOP n ...',
+    description: 'Limita righe in SQL Server.',
+    sqlite: 'SELECT * FROM orders ORDER BY total_amount DESC LIMIT 5;',
+    postgresql: 'SELECT * FROM orders ORDER BY total_amount DESC LIMIT 5;',
+    sqlserver: 'SELECT TOP 5 * FROM orders ORDER BY total_amount DESC;',
+    useCases: ['Snippet T-SQL', 'Porting da SQL Server'],
+    pitfalls: ['TOP senza ORDER BY è nondeterministico']
+  }),
+  baseEntry({
+    keyword: 'MERGE',
+    category: 'DML',
+    syntax: 'MERGE target USING source ON cond WHEN MATCHED ...',
+    description: 'Upsert multi-azione in SQL Server/PostgreSQL (15+).',
+    sqlite: "INSERT INTO customers (id, name, segment)\nVALUES (9999,'Temp','SMB')\nON CONFLICT(id) DO UPDATE SET name=excluded.name;",
+    postgresql: "MERGE INTO customers AS t USING (VALUES (9999,'Temp','SMB')) AS s(id,name,segment)\nON t.id = s.id\nWHEN MATCHED THEN UPDATE SET name = s.name\nWHEN NOT MATCHED THEN INSERT (id,name,segment) VALUES (s.id,s.name,s.segment);",
+    sqlserver: "MERGE customers AS t USING (VALUES (9999,'Temp','SMB')) AS s(id,name,segment)\nON t.id = s.id\nWHEN MATCHED THEN UPDATE SET name = s.name\nWHEN NOT MATCHED THEN INSERT (id,name,segment) VALUES (s.id,s.name,s.segment);",
+    useCases: ['Sync dimensioni', 'CDC applicazioni'],
+    pitfalls: ['MERGE in SQL Server ha rischi di race; valutare UPSERT separato']
+  }),
+  baseEntry({
+    keyword: 'UPSERT / ON CONFLICT',
+    category: 'DML',
+    syntax: 'INSERT ... ON CONFLICT (...) DO UPDATE',
+    description: 'Evita duplicati aggiornando o ignorando.',
+    sqlite: "INSERT INTO orders(id, customer_id, order_date, status, total_amount)\nVALUES (6000, 10, '2025-02-10', 'PAID', 100)\nON CONFLICT(id) DO UPDATE SET status='PAID';",
+    postgresql: "INSERT INTO orders(id, customer_id, order_date, status, total_amount)\nVALUES (6000, 10, '2025-02-10', 'PAID', 100)\nON CONFLICT (id) DO UPDATE SET status=EXCLUDED.status;",
+    sqlserver: "MERGE orders AS t USING (VALUES (6000,10,'2025-02-10','PAID',100)) AS s(id,customer_id,order_date,status,total_amount)\nON t.id = s.id\nWHEN MATCHED THEN UPDATE SET status=s.status\nWHEN NOT MATCHED THEN INSERT (id,customer_id,order_date,status,total_amount) VALUES (s.id,s.customer_id,s.order_date,s.status,s.total_amount);",
+    useCases: ['Idempotent load', 'CDC ingest'],
+    pitfalls: ['Definire univocità chiara']
+  }),
+  baseEntry({
+    keyword: 'WINDOW FRAME',
+    category: 'Window',
+    syntax: 'ROWS BETWEEN n PRECEDING AND CURRENT ROW',
+    description: 'Definisce l’intervallo per funzioni finestra.',
+    sqlite: "SELECT date, total_amount,\n       AVG(total_amount) OVER (ORDER BY date ROWS BETWEEN 6 PRECEDING AND CURRENT ROW) AS avg_7d\nFROM fact_orders;",
+    useCases: ['Medie mobili', 'Smoothing serie temporali'],
+    pitfalls: ['RANGE default comporta risultati diversi', 'FRAME manca in alcune funzioni aggregate']
+  }),
+  baseEntry({
+    keyword: 'FILTER (WHERE ...)',
+    category: 'Aggregation',
+    syntax: 'agg(expr) FILTER (WHERE cond)',
+    description: 'Applica condizione per singola aggregazione.',
+    sqlite: "SELECT COUNT(*) AS all_orders,\n       SUM(CASE WHEN status='PAID' THEN 1 ELSE 0 END) AS paid_orders\nFROM orders;",
+    postgresql: "SELECT COUNT(*) AS all_orders,\n       COUNT(*) FILTER (WHERE status='PAID') AS paid_orders\nFROM orders;",
+    sqlserver: "SELECT COUNT(*) AS all_orders,\n       SUM(CASE WHEN status='PAID' THEN 1 ELSE 0 END) AS paid_orders\nFROM orders;",
+    useCases: ['Metriche multiple in una query', 'Conditional aggregation'],
+    pitfalls: ['FILTER non disponibile in SQLite/SQL Server — usare CASE']
+  }),
+  baseEntry({
+    keyword: 'PERCENTILE_CONT',
+    category: 'Analytics',
+    syntax: 'PERCENTILE_CONT(x) WITHIN GROUP (ORDER BY col)',
+    description: 'Calcola percentile continuo.',
+    sqlite: "SELECT total_amount FROM orders ORDER BY total_amount LIMIT 1 OFFSET (SELECT COUNT(*)/2 FROM orders); -- approx median",
+    postgresql: "SELECT PERCENTILE_CONT(0.5) WITHIN GROUP (ORDER BY total_amount) AS median FROM orders;",
+    sqlserver: "SELECT PERCENTILE_CONT(0.5) WITHIN GROUP (ORDER BY total_amount) OVER() AS median FROM orders;",
+    useCases: ['Median ticket', 'Soglie percentile'],
+    pitfalls: ['SQLite richiede workaround manuale']
+  }),
+  baseEntry({
+    keyword: 'TABLESAMPLE',
+    category: 'Sampling',
+    syntax: 'FROM tab TABLESAMPLE SYSTEM (n PERCENT)',
+    description: 'Campiona righe per analisi veloce.',
+    sqlite: 'SELECT * FROM orders WHERE ABS(RANDOM()) % 10 = 0 LIMIT 50;',
+    postgresql: 'SELECT * FROM orders TABLESAMPLE SYSTEM (10);',
+    sqlserver: 'SELECT * FROM orders TABLESAMPLE (10 PERCENT);',
+    useCases: ['Exploratory analysis', 'Ridurre costi test'],
+    pitfalls: ['Campione non sempre uniforme', 'In SQLite workaround non deterministico']
+  }),
+  baseEntry({
+    keyword: 'SEQUENCE',
+    category: 'DDL',
+    syntax: 'CREATE SEQUENCE seq START WITH ...',
+    description: 'Genera valori incrementali.',
+    sqlite: '/* SQLite usa AUTOINCREMENT su INTEGER PRIMARY KEY */\nCREATE TABLE demo_seq(id INTEGER PRIMARY KEY AUTOINCREMENT, name TEXT);',
+    postgresql: 'CREATE SEQUENCE order_seq START 10000; SELECT nextval(\'order_seq\');',
+    sqlserver: 'CREATE SEQUENCE order_seq START WITH 10000 INCREMENT BY 1; SELECT NEXT VALUE FOR order_seq;',
+    useCases: ['Surrogate key', 'CDC offset'],
+    pitfalls: ['Gestire gap dopo rollback']
+  }),
+  baseEntry({
+    keyword: 'IDENTITY',
+    category: 'DDL',
+    syntax: 'col INT IDENTITY(1,1)',
+    description: 'Colonna auto-increment SQL Server.',
+    sqlite: 'CREATE TABLE demo_identity(id INTEGER PRIMARY KEY AUTOINCREMENT, name TEXT);',
+    postgresql: 'CREATE TABLE demo_identity(id SERIAL PRIMARY KEY, name text);',
+    sqlserver: 'CREATE TABLE demo_identity(id INT IDENTITY(1,1) PRIMARY KEY, name NVARCHAR(50));',
+    useCases: ['Chiavi surrogate', 'Migration T-SQL'],
+    pitfalls: ['Reset richiede DBCC CHECKIDENT in SQL Server']
+  }),
+  baseEntry({
+    keyword: 'COHORT',
+    category: 'Analytics',
+    syntax: 'bucket clienti per prima data',
+    description: 'Definisce gruppo di ingresso per analisi retention.',
+    sqlite: "SELECT customer_id, substr(MIN(order_date),1,7) AS cohort FROM orders GROUP BY customer_id;",
+    postgresql: "SELECT customer_id, to_char(MIN(order_date)::date,'YYYY-MM') AS cohort FROM orders GROUP BY customer_id;",
+    sqlserver: "SELECT customer_id, FORMAT(MIN(CAST(order_date AS date)),'yyyy-MM') AS cohort FROM orders GROUP BY customer_id;",
+    useCases: ['Retention', 'Growth analysis'],
+    pitfalls: ['Definire regola di coorte chiara (primo ordine vs signup)']
+  }),
+  baseEntry({
+    keyword: 'RETENTION',
+    category: 'Analytics',
+    syntax: 'coorte + attivita successiva',
+    description: 'Misura utenti che ritornano in periodi successivi.',
+    sqlite: "WITH cohort AS (\n  SELECT customer_id, substr(MIN(order_date),1,7) AS cohort FROM orders GROUP BY customer_id\n), activity AS (\n  SELECT c.cohort, substr(o.order_date,1,7) AS ym, o.customer_id FROM cohort c JOIN orders o ON o.customer_id = c.customer_id\n)\nSELECT cohort, ym, COUNT(DISTINCT customer_id) AS active FROM activity GROUP BY cohort, ym ORDER BY cohort, ym;",
+    postgresql: "WITH cohort AS (\n  SELECT customer_id, to_char(MIN(order_date)::date,'YYYY-MM') AS cohort FROM orders GROUP BY customer_id\n), activity AS (\n  SELECT c.cohort, to_char(o.order_date::date,'YYYY-MM') AS ym, o.customer_id FROM cohort c JOIN orders o ON o.customer_id = c.customer_id\n)\nSELECT cohort, ym, COUNT(DISTINCT customer_id) AS active FROM activity GROUP BY cohort, ym ORDER BY cohort, ym;",
+    sqlserver: "WITH cohort AS (\n  SELECT customer_id, FORMAT(MIN(CAST(order_date AS date)),'yyyy-MM') AS cohort FROM orders GROUP BY customer_id\n), activity AS (\n  SELECT c.cohort, FORMAT(CAST(o.order_date AS date),'yyyy-MM') AS ym, o.customer_id FROM cohort c JOIN orders o ON o.customer_id = c.customer_id\n)\nSELECT cohort, ym, COUNT(DISTINCT customer_id) AS active FROM activity GROUP BY cohort, ym ORDER BY cohort, ym;",
+    useCases: ['Health prodotto', 'Engagement'],
+    pitfalls: ['COUNT DISTINCT costoso; valutare approx']
+  }),
+  baseEntry({
+    keyword: 'SESSIONIZATION',
+    category: 'Analytics',
+    syntax: 'LAG timestamp + gap',
+    description: 'Crea sessioni con timeout inattività.',
+    sqlite: "WITH ordered AS (\n  SELECT user_id, event_time,\n         LAG(event_time) OVER(PARTITION BY user_id ORDER BY event_time) AS prev_time\n  FROM events\n), flagged AS (\n  SELECT *, CASE WHEN prev_time IS NULL OR (julianday(event_time)-julianday(prev_time))*86400 > 1800 THEN 1 ELSE 0 END AS new_session\n  FROM ordered\n)\nSELECT user_id, SUM(new_session) OVER(PARTITION BY user_id ORDER BY event_time) AS session_num, event_time\nFROM flagged;",
+    postgresql: "WITH ordered AS (\n  SELECT user_id, event_time,\n         LAG(event_time) OVER(PARTITION BY user_id ORDER BY event_time) AS prev_time\n  FROM events\n), flagged AS (\n  SELECT *, CASE WHEN prev_time IS NULL OR EXTRACT(EPOCH FROM event_time - prev_time) > 1800 THEN 1 ELSE 0 END AS new_session\n  FROM ordered\n)\nSELECT user_id, SUM(new_session) OVER(PARTITION BY user_id ORDER BY event_time) AS session_num, event_time\nFROM flagged;",
+    sqlserver: "WITH ordered AS (\n  SELECT user_id, event_time,\n         LAG(event_time) OVER(PARTITION BY user_id ORDER BY event_time) AS prev_time\n  FROM events\n), flagged AS (\n  SELECT *, CASE WHEN prev_time IS NULL OR DATEDIFF(second, prev_time, event_time) > 1800 THEN 1 ELSE 0 END AS new_session\n  FROM ordered\n)\nSELECT user_id, SUM(new_session) OVER(PARTITION BY user_id ORDER BY event_time ROWS UNBOUNDED PRECEDING) AS session_num, event_time\nFROM flagged;",
+    useCases: ['Web analytics', 'RFM recency'],
+    pitfalls: ['Gestire timezone e formati timestamp']
+  }),
+  baseEntry({
+    keyword: 'GAP AND ISLANDS',
+    category: 'Analytics',
+    syntax: 'ROW_NUMBER delta trick',
+    description: 'Identifica intervalli continui in serie ordinate.',
+    sqlite: "WITH ordered AS (\n  SELECT date, ROW_NUMBER() OVER(ORDER BY date) AS rn FROM fact_orders\n), grp AS (\n  SELECT date, rn - ROW_NUMBER() OVER(ORDER BY date) AS g FROM ordered\n)\nSELECT MIN(date) AS start_date, MAX(date) AS end_date, COUNT(*) AS len FROM grp GROUP BY g ORDER BY start_date;",
+    postgresql: "WITH ordered AS (\n  SELECT date::date AS date, ROW_NUMBER() OVER(ORDER BY date) AS rn FROM fact_orders\n), grp AS (\n  SELECT date, rn - ROW_NUMBER() OVER(ORDER BY date) AS g FROM ordered\n)\nSELECT MIN(date) AS start_date, MAX(date) AS end_date, COUNT(*) AS len FROM grp GROUP BY g ORDER BY start_date;",
+    sqlserver: "WITH ordered AS (\n  SELECT CAST([date] AS date) AS [date], ROW_NUMBER() OVER(ORDER BY [date]) AS rn FROM fact_orders\n), grp AS (\n  SELECT [date], rn - ROW_NUMBER() OVER(ORDER BY [date]) AS g FROM ordered\n)\nSELECT MIN([date]) AS start_date, MAX([date]) AS end_date, COUNT(*) AS len FROM grp GROUP BY g ORDER BY start_date;",
+    useCases: ['Periodi attivi', 'Run length encoding'],
+    pitfalls: ['Richiede ordinamento stabile']
+  }),
+  baseEntry({
+    keyword: 'INCREMENTAL LOAD',
+    category: 'Data Engineering',
+    syntax: 'WHERE col > last_watermark',
+    description: 'Carica solo righe nuove rispetto a un watermark.',
+    sqlite: "INSERT INTO fact_orders(order_id, date, customer_id, total_amount, status, channel)\nSELECT o.id, o.order_date, o.customer_id, o.total_amount, o.status, o.channel\nFROM orders o\nWHERE o.order_date > (SELECT COALESCE(MAX(date),'1970-01-01') FROM fact_orders);",
+    useCases: ['ETL/ELT daily', 'CDC semplificato'],
+    pitfalls: ['Non copre update di righe vecchie; usare checksum/versione']
+  }),
+  baseEntry({
+    keyword: 'DEDUPLICATION',
+    category: 'Data Quality',
+    syntax: 'ROW_NUMBER + filter',
+    description: 'Rimuove duplicati scegliendo record preferito.',
+    sqlite: "WITH ranked AS (\n  SELECT event_id, session_id, event_time,\n         ROW_NUMBER() OVER(PARTITION BY session_id, event_time ORDER BY event_id) AS rn\n  FROM events\n)\nDELETE FROM events WHERE event_id IN (SELECT event_id FROM ranked WHERE rn > 1);",
+    postgresql: "WITH ranked AS (\n  SELECT event_id, session_id, event_time,\n         ROW_NUMBER() OVER(PARTITION BY session_id, event_time ORDER BY event_id) AS rn\n  FROM events\n)\nDELETE FROM events WHERE event_id IN (SELECT event_id FROM ranked WHERE rn > 1);",
+    sqlserver: "WITH ranked AS (\n  SELECT event_id, session_id, event_time,\n         ROW_NUMBER() OVER(PARTITION BY session_id, event_time ORDER BY event_id) AS rn\n  FROM events\n)\nDELETE FROM ranked WHERE rn > 1;",
+    useCases: ['Pulizia log duplicati', 'Preparazione firme output'],
+    pitfalls: ['DELETE muta dati demo; eseguire dopo backup']
+  }),
+  baseEntry({
+    keyword: 'AUDIT LOG',
+    category: 'Governance',
+    syntax: 'INSERT trigger su modifiche',
+    description: 'Registra cambi su tabelle critiche.',
+    sqlite: "CREATE TABLE IF NOT EXISTS audit_log_demo(entity TEXT, event_type TEXT, created_at TEXT);\nINSERT INTO audit_log_demo VALUES('orders','UPDATE', datetime('now'));",
+    useCases: ['Traccia modifiche', 'Forensics'],
+    pitfalls: ['Trigger possono impattare performance']
+  }),
+  baseEntry({
+    keyword: 'MASKING',
+    category: 'Security',
+    syntax: 'funzioni per offuscare dati sensibili',
+    description: 'Oscura PII in query o viste.',
+    sqlite: "SELECT id, substr(email,1,3) || '***' AS masked_email FROM customers LIMIT 10;",
+    postgresql: "SELECT id, regexp_replace(email, '(^...).*(.@.*$)', '\\1***\\2') AS masked_email FROM customers;",
+    sqlserver: "SELECT id, CONCAT(LEFT(email,3),'***',RIGHT(email,5)) AS masked_email FROM customers;",
+    useCases: ['Condivisione dataset demo', 'Limitare esposizione PII'],
+    pitfalls: ['Non sostituisce controlli di accesso']
+  }),
+  baseEntry({
+    keyword: 'ROW LEVEL SECURITY',
+    category: 'Security',
+    syntax: 'POLICY per utente/ruolo',
+    description: 'Restringe righe visibili in base al ruolo.',
+    sqlite: "SELECT id, name FROM customers WHERE segment='SMB'; -- simulazione RLS",
+    postgresql: "ALTER TABLE customers ENABLE ROW LEVEL SECURITY;\nCREATE POLICY smb_only ON customers USING (segment='SMB');",
+    sqlserver: "CREATE SECURITY POLICY segment_policy ADD FILTER PREDICATE segment = 'SMB' ON dbo.customers WITH (STATE=ON);",
+    useCases: ['Multi-tenant', 'Least privilege'],
+    pitfalls: ['Non supportato in SQLite; simulare via WHERE']
+  }),
+  baseEntry({
+    keyword: 'GRANT',
+    category: 'DCL',
+    syntax: 'GRANT perm ON object TO role',
+    description: 'Concede privilegi su oggetti.',
+    sqlite: "SELECT 'GRANT non supportato in SQLite demo' AS note;",
+    postgresql: "GRANT SELECT ON customers TO analyst;",
+    sqlserver: "GRANT SELECT ON dbo.customers TO analyst;",
+    useCases: ['Access control', 'Segregazione dei ruoli'],
+    pitfalls: ['Non supportato nel playground SQLite']
+  }),
+  baseEntry({
+    keyword: 'REVOKE',
+    category: 'DCL',
+    syntax: 'REVOKE perm ON object FROM role',
+    description: 'Revoca privilegi precedentemente concessi.',
+    sqlite: "SELECT 'REVOKE non supportato in SQLite demo' AS note;",
+    postgresql: "REVOKE INSERT ON orders FROM analyst;",
+    sqlserver: "REVOKE INSERT ON dbo.orders FROM analyst;",
+    useCases: ['Revocare accessi errati', 'Ridurre superficie rischio'],
+    pitfalls: ['Ordine GRANT/REVOKE influenza risultato effettivo']
+  }),
+  baseEntry({
+    keyword: 'SET TRANSACTION',
+    category: 'TCL',
+    syntax: 'SET TRANSACTION ISOLATION LEVEL ...',
+    description: 'Configura isolamento/readonly per la transazione corrente.',
+    sqlite: "BEGIN IMMEDIATE; -- SQLite ha lock a livello DB\nSELECT COUNT(*) FROM orders; COMMIT;",
+    postgresql: "BEGIN; SET TRANSACTION ISOLATION LEVEL REPEATABLE READ; SELECT COUNT(*) FROM orders; COMMIT;",
+    sqlserver: "SET TRANSACTION ISOLATION LEVEL REPEATABLE READ; BEGIN TRAN; SELECT COUNT(*) FROM orders; COMMIT;",
+    useCases: ['Controllo concorrenza', 'Letture consistenti'],
+    pitfalls: ['SQLite non supporta livelli granulari; lock più ampi']
   })
-);
+];
 
-export const KEYWORD_ENTRIES = [...base, ...more].slice(0, 90);
+export const KEYWORD_ENTRIES = [...base, ...extras];
