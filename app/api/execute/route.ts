@@ -1,5 +1,6 @@
 import { createHash } from 'node:crypto';
 import { NextRequest, NextResponse } from 'next/server';
+import type { QueryResult } from 'pg';
 import { getPool } from '@/lib/db';
 import { guardAndPrepareSql } from '@/lib/queryGuard';
 import { buildSchemaName } from '@/lib/session';
@@ -24,7 +25,7 @@ export async function POST(req: NextRequest) {
     await client.query(`SET LOCAL statement_timeout = '${TIMEOUT_MS}ms'`);
     await client.query(`SET LOCAL search_path = ${schemaName}, public`);
 
-    const result = await client.query(safeSql);
+    const result: QueryResult<Record<string, unknown>> = await client.query(safeSql);
 
     await client.query(
       'UPDATE app.sessions SET last_used_at = now(), expires_at = now() + interval \'30 minutes\' WHERE session_id = $1',
