@@ -10,6 +10,7 @@ let engine = null;
 let erd = null;
 let schemaSnapshot = null;
 const HISTORY_KEY = 'sql_history';
+const DATASET_LABEL = 'Dataset: Demo e-commerce';
 
 function setStatus(message) {
   if (dom.status) dom.status.textContent = message;
@@ -180,6 +181,11 @@ function wireControls(params) {
       const q = DIALECT_DEFAULT_QUERIES[dom.dialect.value] || DEFAULT_QUERY;
       if (!params.query) dom.editor.value = q;
       if (dom.dialectBadge) dom.dialectBadge.textContent = `Dialetto esempi: ${DIALECTS[dom.dialect.value] || 'SQLite'}`;
+      if (dom.dialectNotice) {
+        const isSqlite = dom.dialect.value === 'sqlite';
+        dom.dialectNotice.hidden = isSqlite;
+        dom.dialectNotice.textContent = isSqlite ? '' : 'Esecuzione: SQLite. Dialetto selezionato = esempi.';
+      }
     });
   }
   if (dom.editor) {
@@ -201,6 +207,8 @@ function cacheDom() {
   dom.dialect = document.getElementById('dialectSelect');
   dom.engineBadge = document.getElementById('engineBadge');
   dom.dialectBadge = document.getElementById('dialectBadge');
+  dom.datasetBadge = document.getElementById('datasetBadge');
+  dom.dialectNotice = document.getElementById('dialectNotice');
   dom.execSql = document.getElementById('executedSqlText');
   dom.erd = document.getElementById('playgroundErd');
   dom.erdSelect = document.getElementById('erdTableSelect');
@@ -328,6 +336,13 @@ document.addEventListener('DOMContentLoaded', async () => {
   if (dom.dialect) dom.dialect.value = params.dialect || 'sqlite';
   if (dom.dialectBadge) dom.dialectBadge.textContent = `Dialetto esempi: ${DIALECTS[params.dialect] || 'SQLite'}`;
   if (dom.engineBadge) dom.engineBadge.textContent = 'Engine: SQLite (sql.js)';
+  if (dom.datasetBadge) dom.datasetBadge.textContent = DATASET_LABEL;
+  if (dom.dialectNotice) {
+    dom.dialectNotice.hidden = params.dialect === 'sqlite';
+    if (params.dialect !== 'sqlite') {
+      dom.dialectNotice.textContent = 'Esecuzione: SQLite. Dialetto selezionato = esempi.';
+    }
+  }
   if (dom.status) dom.status.textContent = 'Caricamento engine...';
 
   try {
@@ -355,9 +370,10 @@ document.addEventListener('DOMContentLoaded', async () => {
 
   renderHistory();
 
+  const shouldAutorun = params.autorun && params.dialect === 'sqlite';
   if (params.dialect && params.dialect !== 'sqlite' && params.autorun) {
-    setStatus('Dialetto non eseguibile qui, usa SQLite per run');
-  } else if (params.autorun && params.query) {
+    setStatus('Dialetto non eseguibile qui, premi Esegui per usare SQLite');
+  } else if (shouldAutorun && params.query) {
     runQuery();
   }
 });

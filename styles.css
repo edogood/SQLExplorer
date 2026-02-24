@@ -139,6 +139,13 @@ body {
   color: var(--muted);
 }
 
+.hero-actions {
+  margin-top: 1rem;
+  display: flex;
+  gap: 0.75rem;
+  flex-wrap: wrap;
+}
+
 .hero-cards {
   margin-top: 1.15rem;
   display: grid;
@@ -385,6 +392,12 @@ summary:focus-visible {
   color: #8d2019;
 }
 
+.badge.warning {
+  background: #fff4e5;
+  border-color: #f1c89c;
+  color: #8a4b1a;
+}
+
 .result-container {
   min-height: 240px;
   border: 1px solid var(--line);
@@ -422,13 +435,32 @@ summary:focus-visible {
   font-weight: 700;
 }
 
+.status-links {
+  display: flex;
+  gap: 0.75rem;
+  flex-wrap: wrap;
+  margin-left: auto;
+  align-items: center;
+}
+
+.status-links .link-button {
+  font-weight: 700;
+  text-decoration: none;
+  color: var(--teal);
+}
+
+.status-links .link-button:hover {
+  text-decoration: underline;
+}
+
 .table-wrap {
   overflow: auto;
   border: 1px solid #e7ece5;
   border-radius: 10px;
 }
 
-.data-table {
+.data-table,
+.sql-table {
   width: 100%;
   border-collapse: collapse;
   font-size: 0.84rem;
@@ -440,10 +472,10 @@ summary:focus-visible {
   border-right: 1px solid #edf1ec;
   padding: 0.42rem 0.52rem;
   text-align: left;
-  white-space: nowrap;
-  max-width: 300px;
-  overflow: hidden;
-  text-overflow: ellipsis;
+  white-space: normal;
+  max-width: 320px;
+  word-break: break-word;
+  overflow-wrap: anywhere;
 }
 
 .data-table th:last-child,

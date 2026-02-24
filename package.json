@@ -3,7 +3,8 @@
   "version": "1.0.0",
   "private": true,
   "scripts": {
-    "test:smoke": "npx playwright test --config=playwright.config.js"
+    "test:smoke": "npx playwright test --config=playwright.config.js",
+    "validate:snippets": "node scripts/validate_snippets.mjs"
   },
   "devDependencies": {
     "@playwright/test": "^1.49.0",

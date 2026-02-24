@@ -1,6 +1,5 @@
 import { SYNTAX_TOPICS } from '../data/syntax-topics.js';
 import { buildPlaygroundUrl } from '../ui/links.js';
-import { escapeHtml } from '../ui/dom.js';
 import { showToast } from '../ui/toast.js';
 
 const dom = {};
@@ -69,35 +68,98 @@ function render() {
     return !term || blob.includes(term);
   });
 
+  dom.list.replaceChildren();
+
   if (!filtered.length) {
-    dom.list.innerHTML = '<p class="info-block">Nessuna sintassi trovata.</p>';
+    const empty = document.createElement('p');
+    empty.className = 'info-block';
+    empty.textContent = 'Nessuna sintassi trovata.';
+    dom.list.appendChild(empty);
     announce('Nessun match nella ricerca sintassi.');
     return;
   }
 
-  dom.list.innerHTML = filtered.map((topic) => {
-    const args = (topic.args || []).map((arg) => `<li>${escapeHtml(arg)}</li>`).join('');
-    const snippet = topic.snippets[dialect] || topic.snippets.sqlite;
+  filtered.forEach((topic) => {
     const slug = slugify(topic.title);
-    const attentionHtml = (topic.attention || []).length
-      ? `<h4 class="keyword-subtitle">Attenzione</h4><ul class="keyword-points">${topic.attention.map((a) => `<li>${escapeHtml(a)}</li>`).join('')}</ul>`
-      : '';
-    const playgroundUrl = buildPlaygroundUrl({ dialect, query: snippet, autorun: true });
-    return `
-      <article class="syntax-page-card" id="${slug}" tabindex="-1">
-        <h3><a href="#${slug}">${escapeHtml(topic.title)}</a></h3>
-        <p class="muted">${escapeHtml(topic.summary)}</p>
-        <h4 class="keyword-subtitle">Argomenti</h4>
-        <ul class="keyword-points">${args}</ul>
-        <pre><code>${escapeHtml(snippet)}</code></pre>
-        <div class="syntax-actions">
-          <button class="btn btn-secondary" type="button" data-copy="${encodeURIComponent(snippet)}">Copia snippet</button>
-          <a class="btn btn-primary" href="${playgroundUrl}">Apri nel Playground</a>
-        </div>
-        ${attentionHtml}
-      </article>
-    `;
-  }).join('');
+    const snippet = topic.snippets[dialect] || topic.snippets.sqlite;
+    const article = document.createElement('article');
+    article.className = 'syntax-page-card';
+    article.id = slug;
+    article.tabIndex = -1;
+
+    const heading = document.createElement('h3');
+    const anchor = document.createElement('a');
+    anchor.href = `#${slug}`;
+    anchor.textContent = topic.title;
+    heading.appendChild(anchor);
+    article.appendChild(heading);
+
+    const summary = document.createElement('p');
+    summary.className = 'muted';
+    summary.textContent = topic.summary;
+    article.appendChild(summary);
+
+    const argsTitle = document.createElement('h4');
+    argsTitle.className = 'keyword-subtitle';
+    argsTitle.textContent = 'Argomenti';
+    article.appendChild(argsTitle);
+
+    const argsList = document.createElement('ul');
+    argsList.className = 'keyword-points';
+    (topic.args || []).forEach((arg) => {
+      const li = document.createElement('li');
+      li.textContent = arg;
+      argsList.appendChild(li);
+    });
+    article.appendChild(argsList);
+
+    const pre = document.createElement('pre');
+    const code = document.createElement('code');
+    code.textContent = snippet;
+    pre.appendChild(code);
+    article.appendChild(pre);
+
+    const actions = document.createElement('div');
+    actions.className = 'syntax-actions';
+    const copyBtn = document.createElement('button');
+    copyBtn.className = 'btn btn-secondary';
+    copyBtn.type = 'button';
+    copyBtn.dataset.copy = encodeURIComponent(snippet);
+    copyBtn.textContent = 'Copia snippet';
+    actions.appendChild(copyBtn);
+
+    const playgroundUrl = buildPlaygroundUrl({
+      dialect,
+      query: snippet,
+      autorun: true,
+      sqliteSafe: dialect === 'sqlite'
+    });
+    const link = document.createElement('a');
+    link.className = 'btn btn-primary';
+    link.href = playgroundUrl;
+    link.textContent = 'Apri nel Playground';
+    actions.appendChild(link);
+
+    article.appendChild(actions);
+
+    if (topic.attention && topic.attention.length) {
+      const attTitle = document.createElement('h4');
+      attTitle.className = 'keyword-subtitle';
+      attTitle.textContent = 'Attenzione';
+      article.appendChild(attTitle);
+
+      const attList = document.createElement('ul');
+      attList.className = 'keyword-points';
+      topic.attention.forEach((a) => {
+        const li = document.createElement('li');
+        li.textContent = a;
+        attList.appendChild(li);
+      });
+      article.appendChild(attList);
+    }
+
+    dom.list.appendChild(article);
+  });
 
   announce(`Risultati mostrati: ${filtered.length}.`);
   focusAnchorIfPresent();
