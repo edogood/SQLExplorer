@@ -1,23 +1,26 @@
-import { randomUUID } from 'node:crypto';
 import { NextResponse } from 'next/server';
 import { getPool } from '@/lib/db';
-import { createOrRefreshSession, ensureAppSchema } from '@/lib/session';
+import { cleanupExpiredSchemas, createSession, ensureAppSchema } from '@/lib/session';
+
+export const runtime = 'nodejs';
 
 export async function POST() {
-  const pool = getPool();
-  const client = await pool.connect();
+  const client = await getPool().connect();
   try {
-    const sessionId = randomUUID().replaceAll('-', '');
-    const now = new Date();
     await ensureAppSchema(client);
-    const { expiresAt } = await createOrRefreshSession(client, sessionId, now);
+    await cleanupExpiredSchemas(client, 3);
+    const session = await createSession(client);
+
     return NextResponse.json({
-      sessionId,
-      expiresAt: expiresAt.toISOString(),
+      sessionId: session.sessionId,
+      expiresAt: session.expiresAt,
       limits: { timeoutMs: 3000, maxRows: 500 }
     });
   } catch (error) {
-    return NextResponse.json({ error: { code: 'INTERNAL', message: (error as Error).message } }, { status: 500 });
+    return NextResponse.json(
+      { error: { code: 'INTERNAL', message: (error as Error).message } },
+      { status: 500 }
+    );
   } finally {
     client.release();
   }

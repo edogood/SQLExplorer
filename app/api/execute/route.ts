@@ -1,62 +1,65 @@
-import { createHash } from 'node:crypto';
 import { NextRequest, NextResponse } from 'next/server';
 import type { QueryResult } from 'pg';
 import { getPool } from '@/lib/db';
 import { guardAndPrepareSql } from '@/lib/queryGuard';
-import { buildSchemaName } from '@/lib/session';
+import { cleanupExpiredSchemas, ensureAppSchema, extendSessionTtl, requireActiveSession } from '@/lib/session';
+
+export const runtime = 'nodejs';
 
 const TIMEOUT_MS = 3000;
 const MAX_ROWS = 500;
 
+function mapError(error: unknown): { status: number; code: string; message: string } {
+  const message = error instanceof Error ? error.message : 'Unexpected error';
+  const pg = error as { code?: string };
+
+  if (message === 'SESSION_EXPIRED') {
+    return { status: 410, code: 'SESSION_EXPIRED', message: 'Session expired. Create a new session.' };
+  }
+  if (message.includes('blocked') || message.includes('Multiple statements') || message.includes('LIMIT')) {
+    return { status: 400, code: 'QUERY_BLOCKED', message };
+  }
+  if (pg.code === '57014') {
+    return { status: 408, code: 'TIMEOUT', message: 'Query timed out after 3000ms.' };
+  }
+  if (pg.code?.startsWith('42')) {
+    return { status: 400, code: 'SYNTAX', message };
+  }
+
+  return { status: 500, code: 'INTERNAL', message: 'Internal server error.' };
+}
+
 export async function POST(req: NextRequest) {
   const body = await req.json();
-  const sessionId = body?.sessionId as string;
-  const sql = body?.sql as string;
+  const sessionId = String(body?.sessionId ?? '');
+  const rawSql = String(body?.sql ?? '');
 
-  const pool = getPool();
-  const client = await pool.connect();
-  const started = Date.now();
+  const client = await getPool().connect();
+  const startedAt = Date.now();
 
   try {
-    const schemaName = buildSchemaName(sessionId);
-    const safeSql = guardAndPrepareSql(sql, MAX_ROWS);
+    await ensureAppSchema(client);
+    await cleanupExpiredSchemas(client, 1);
+    const { sql } = guardAndPrepareSql(rawSql, MAX_ROWS);
+    const schemaName = await requireActiveSession(client, sessionId);
 
     await client.query('BEGIN');
     await client.query(`SET LOCAL statement_timeout = '${TIMEOUT_MS}ms'`);
     await client.query(`SET LOCAL search_path = ${schemaName}, public`);
-
-    const result: QueryResult<Record<string, unknown>> = await client.query(safeSql);
-
-    await client.query(
-      'UPDATE app.sessions SET last_used_at = now(), expires_at = now() + interval \'30 minutes\' WHERE session_id = $1',
-      [sessionId]
-    );
-
-    const durationMs = Date.now() - started;
-    await client.query(
-      'INSERT INTO app.query_log(session_id, created_at, duration_ms, row_count, query_hash) VALUES($1, now(), $2, $3, $4)',
-      [sessionId, durationMs, result.rowCount, createHash('sha256').update(sql).digest('hex')]
-    );
-
+    const result = await client.query(sql);
+    await extendSessionTtl(client, sessionId);
     await client.query('COMMIT');
 
     return NextResponse.json({
       columns: result.fields.map((f) => f.name),
       rows: result.rows.map((row) => result.fields.map((f) => row[f.name])),
       rowCount: result.rowCount,
-      durationMs
+      durationMs: Date.now() - startedAt
     });
-  } catch (error: unknown) {
-    await client.query('ROLLBACK');
-    const pgErr = error as { code?: string; message: string };
-    const code = pgErr.code === '57014' ? 'TIMEOUT' : pgErr.code?.startsWith('42') ? 'SYNTAX' : pgErr.message.includes('blocked') ? 'QUERY_BLOCKED' : 'INTERNAL';
-
-    await client.query(
-      'INSERT INTO app.query_log(session_id, created_at, duration_ms, error_code, error_message, query_hash) VALUES($1, now(), $2, $3, $4, $5)',
-      [sessionId ?? null, Date.now() - started, code, pgErr.message, createHash('sha256').update(sql ?? '').digest('hex')]
-    ).catch(() => undefined);
-
-    return NextResponse.json({ error: { code, message: pgErr.message } }, { status: 400 });
+  } catch (error) {
+    await client.query('ROLLBACK').catch(() => undefined);
+    const mapped = mapError(error);
+    return NextResponse.json({ error: { code: mapped.code, message: mapped.message } }, { status: mapped.status });
   } finally {
     client.release();
   }
